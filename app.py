@@ -6,14 +6,45 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
+# تهيئة مسار مكتبات Tk/Tcl الاحتياطية في حال عدم تثبيتها على مستوى النظام (Arch Linux)
+venv_lib = os.path.join(BASE_DIR, ".venv", "lib")
+if os.path.exists(os.path.join(venv_lib, "libtk8.6.so")):
+    current_ld = os.environ.get("LD_LIBRARY_PATH", "")
+    if venv_lib not in current_ld.split(":"):
+        os.environ["LD_LIBRARY_PATH"] = f"{venv_lib}:{current_ld}" if current_ld else venv_lib
+        os.environ["TCL_LIBRARY"] = os.path.join(venv_lib, "tcl8.6")
+        os.environ["TK_LIBRARY"] = os.path.join(venv_lib, "tk8.6")
+        if len(sys.argv) > 0 and sys.argv[0] != "-c":
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+    else:
+        os.environ.setdefault("TCL_LIBRARY", os.path.join(venv_lib, "tcl8.6"))
+        os.environ.setdefault("TK_LIBRARY", os.path.join(venv_lib, "tk8.6"))
+
 import customtkinter as ctk
 import sympy as sp
 import tkinter as tk
 from tkinter import ttk
 from math_utils import parse_math_expression, make_diagonally_dominant
+import arabic_reshaper
+from bidi.algorithm import get_display
+
+
+def ar(text):
+    if not text:
+        return ""
+    return get_display(arabic_reshaper.reshape(str(text)))
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
+
+# إتاحة تجاوز مقياس الرسوميات لشاشات Wayland/Hyprland العالية الدقة
+if "CTK_SCALING" in os.environ:
+    try:
+        scale_val = float(os.environ["CTK_SCALING"])
+        ctk.set_widget_scaling(scale_val)
+        ctk.set_window_scaling(scale_val)
+    except ValueError:
+        pass
 
 class NumericalApp(ctk.CTk):
     def __init__(self):
@@ -23,14 +54,31 @@ class NumericalApp(ctk.CTk):
         self.geometry("980x780")
         self.minsize(850, 650)
 
+        # تحديد الخطوط المتوافقة تلقائياً (Segoe UI لويندوز، Noto Sans/DejaVu للينكس/Hyprland)
+        self.font_family = "Segoe UI"
+        self.font_mono = "Consolas"
+        try:
+            import tkinter.font as tkfont
+            available = set(tkfont.families(self))
+            for cand in ["Segoe UI", "Noto Sans Arabic", "Noto Sans", "DejaVu Sans", "Liberation Sans"]:
+                if cand in available:
+                    self.font_family = cand
+                    break
+            for mono_cand in ["Consolas", "DejaVu Sans Mono", "Liberation Mono", "monospace"]:
+                if mono_cand in available:
+                    self.font_mono = mono_cand
+                    break
+        except Exception:
+            pass
+
         # تهيئة ستايل الجداول Treeview لتتناغم مع الوضع الداكن
         self.setup_treeview_styles()
 
         # العنوان الرئيسي
         self.header = ctk.CTkLabel(
             self, 
-            text="حاسبة طرق التحليل العددي المتكاملة (Math 3)", 
-            font=("Segoe UI", 22, "bold")
+            text=ar("حاسبة طرق التحليل العددي المتكاملة (Math 3)"), 
+            font=(self.font_family, 22, "bold")
         )
         self.header.pack(pady=(12, 4))
 
@@ -38,9 +86,8 @@ class NumericalApp(ctk.CTk):
         self.tabview = ctk.CTkTabview(self)
         self.tabview.pack(padx=15, pady=8, fill="both", expand=True)
 
-        self.tab_roots = self.tabview.add("جذور المعادلات (Root Finding)")
-        self.tab_linear = self.tabview.add("الأنظمة الخطية (Linear Systems)")
-
+        self.tab_roots = self.tabview.add(ar("جذور المعادلات (Root Finding)"))
+        self.tab_linear = self.tabview.add(ar("الأنظمة الخطية (Linear Systems)"))
         self.setup_roots_tab()
         self.setup_linear_tab()
 
@@ -53,13 +100,13 @@ class NumericalApp(ctk.CTk):
             foreground="#dcdfe4",
             rowheight=26,
             fieldbackground="#23272e",
-            font=("Segoe UI", 10)
+            font=(self.font_family, 10)
         )
         style.configure(
             "Treeview.Heading",
             background="#1f538d",
             foreground="#ffffff",
-            font=("Segoe UI", 10, "bold"),
+            font=(self.font_family, 10, "bold"),
             relief="flat"
         )
         style.map(
@@ -78,7 +125,7 @@ class NumericalApp(ctk.CTk):
             values=["Bisection", "Newton-Raphson", "Secant"],
             variable=self.root_method_var,
             command=self.update_root_inputs,
-            font=("Segoe UI", 13, "bold"),
+            font=(self.font_family, 13, "bold"),
             height=32
         )
         self.root_selector.pack(pady=8)
@@ -88,38 +135,38 @@ class NumericalApp(ctk.CTk):
 
         # شبكة المدخلات
         # المعادلة f(x)
-        self.lbl_eq = ctk.CTkLabel(input_frame, text="المعادلة f(x):", font=("Segoe UI", 12, "bold"))
+        self.lbl_eq = ctk.CTkLabel(input_frame, text=ar("المعادلة f(x):"), font=(self.font_family, 12, "bold"))
         self.lbl_eq.grid(row=0, column=3, padx=10, pady=6, sticky="e")
-        self.entry_eq = ctk.CTkEntry(input_frame, placeholder_text="مثال: x^3 - x - 2 أو e^x - 3x", width=280)
+        self.entry_eq = ctk.CTkEntry(input_frame, placeholder_text=ar("مثال: x^3 - x - 2 أو e^x - 3x"), width=280)
         self.entry_eq.insert(0, "x^3 - x - 2")
         self.entry_eq.grid(row=0, column=2, padx=10, pady=6, sticky="w")
 
         # عرض المشتقة إن وجدت (لنيوتن)
-        self.lbl_diff_info = ctk.CTkLabel(input_frame, text="", font=("Segoe UI", 11, "italic"), text_color="#3498db")
+        self.lbl_diff_info = ctk.CTkLabel(input_frame, text="", font=(self.font_family, 11, "italic"), text_color="#3498db")
         self.lbl_diff_info.grid(row=0, column=0, columnspan=2, padx=10, pady=6, sticky="w")
 
         # المعامل الأول (a أو x0)
-        self.lbl_p1 = ctk.CTkLabel(input_frame, text="بداية الفترة (a):", font=("Segoe UI", 12))
+        self.lbl_p1 = ctk.CTkLabel(input_frame, text=ar("بداية الفترة (a):"), font=(self.font_family, 12))
         self.lbl_p1.grid(row=1, column=3, padx=10, pady=4, sticky="e")
         self.entry_p1 = ctk.CTkEntry(input_frame, placeholder_text="1.0", width=120)
         self.entry_p1.insert(0, "1.0")
         self.entry_p1.grid(row=1, column=2, padx=10, pady=4, sticky="w")
 
-        # المعامل الثاني (b أو x1)
-        self.lbl_p2 = ctk.CTkLabel(input_frame, text="نهاية الفترة (b):", font=("Segoe UI", 12))
+        # المعامل الثاني (b أو x1 أو Delta)
+        self.lbl_p2 = ctk.CTkLabel(input_frame, text=ar("نهاية الفترة (b):"), font=(self.font_family, 12))
         self.lbl_p2.grid(row=2, column=3, padx=10, pady=4, sticky="e")
         self.entry_p2 = ctk.CTkEntry(input_frame, placeholder_text="2.0", width=120)
         self.entry_p2.insert(0, "2.0")
         self.entry_p2.grid(row=2, column=2, padx=10, pady=4, sticky="w")
 
         # نسبة الخطأ (Tol) وأقصى تكرارات
-        self.lbl_tol = ctk.CTkLabel(input_frame, text="نسبة الخطأ (Tol):", font=("Segoe UI", 12))
+        self.lbl_tol = ctk.CTkLabel(input_frame, text=ar("نسبة الخطأ (Tol):"), font=(self.font_family, 12))
         self.lbl_tol.grid(row=1, column=1, padx=10, pady=4, sticky="e")
         self.entry_tol = ctk.CTkEntry(input_frame, placeholder_text="0.001", width=100)
         self.entry_tol.insert(0, "0.001")
         self.entry_tol.grid(row=1, column=0, padx=10, pady=4, sticky="w")
 
-        self.lbl_max_iter = ctk.CTkLabel(input_frame, text="أقصى تكرار:", font=("Segoe UI", 12))
+        self.lbl_max_iter = ctk.CTkLabel(input_frame, text=ar("أقصى تكرار:"), font=(self.font_family, 12))
         self.lbl_max_iter.grid(row=2, column=1, padx=10, pady=4, sticky="e")
         self.entry_max_iter = ctk.CTkEntry(input_frame, placeholder_text="50", width=100)
         self.entry_max_iter.insert(0, "50")
@@ -128,8 +175,8 @@ class NumericalApp(ctk.CTk):
         # زر الحساب
         self.btn_calc_roots = ctk.CTkButton(
             self.tab_roots, 
-            text="احسب الحل الآن", 
-            font=("Segoe UI", 13, "bold"),
+            text=ar("احسب الحل الآن"), 
+            font=(self.font_family, 13, "bold"),
             fg_color="#1f538d",
             hover_color="#14375e",
             height=34,
@@ -138,7 +185,7 @@ class NumericalApp(ctk.CTk):
         self.btn_calc_roots.pack(pady=6)
 
         # رسالة النتيجة
-        self.res_roots = ctk.CTkLabel(self.tab_roots, text="", font=("Segoe UI", 13, "bold"), wraplength=850)
+        self.res_roots = ctk.CTkLabel(self.tab_roots, text="", font=(self.font_family, 13, "bold"), wraplength=850)
         self.res_roots.pack(pady=2)
 
         # إطار جدول التكرارات مع شريط التمرير Scrollbar
@@ -161,30 +208,39 @@ class NumericalApp(ctk.CTk):
     def update_root_headings(self, method):
         if method == "Bisection":
             cols = [
-                ("c1", "الدورة", 70),
+                ("c1", ar("الدورة"), 70),
                 ("c2", "a", 120),
                 ("c3", "b", 120),
-                ("c4", "c (المنتصف)", 140),
+                ("c4", ar("c (المنتصف)"), 140),
                 ("c5", "f(c)", 140),
-                ("c6", "الخطأ (Error)", 120)
+                ("c6", ar("الخطأ (Error)"), 120)
             ]
         elif method == "Newton-Raphson":
             cols = [
-                ("c1", "الدورة", 70),
+                ("c1", ar("الدورة"), 70),
                 ("c2", "x_n", 130),
                 ("c3", "f(x_n)", 130),
                 ("c4", "f'(x_n)", 130),
                 ("c5", "x_(n+1)", 140),
-                ("c6", "الخطأ (Error)", 120)
+                ("c6", ar("الخطأ (Error)"), 120)
+            ]
+        elif method == "Modified Secant":
+            cols = [
+                ("c1", ar("الدورة"), 70),
+                ("c2", "x_i", 120),
+                ("c3", "f(x_i)", 130),
+                ("c4", "f(x_i + \u03b4*x_i)", 150),
+                ("c5", "x_(i+1)", 130),
+                ("c6", ar("الخطأ (Error)"), 120)
             ]
         else: # Secant
             cols = [
-                ("c1", "الدورة", 70),
+                ("c1", ar("الدورة"), 70),
                 ("c2", "x_(n-1)", 130),
                 ("c3", "x_n", 130),
                 ("c4", "x_(n+1)", 140),
                 ("c5", "f(x_(n+1))", 130),
-                ("c6", "الخطأ (Error)", 120)
+                ("c6", ar("الخطأ (Error)"), 120)
             ]
 
         for col_id, text, width in cols:
@@ -195,17 +251,27 @@ class NumericalApp(ctk.CTk):
         self.update_root_headings(choice)
         self.lbl_diff_info.configure(text="")
         if choice == "Bisection":
-            self.lbl_p1.configure(text="بداية الفترة (a):")
-            self.lbl_p2.configure(text="نهاية الفترة (b):")
+            self.lbl_p1.configure(text=ar("بداية الفترة (a):"))
+            self.lbl_p2.configure(text=ar("نهاية الفترة (b):"))
+            self.entry_p2.configure(placeholder_text="2.0")
             self.lbl_p2.grid()
             self.entry_p2.grid()
         elif choice == "Newton-Raphson":
-            self.lbl_p1.configure(text="النقطة الابتدائية (x0):")
+            self.lbl_p1.configure(text=ar("النقطة الابتدائية (x0):"))
             self.lbl_p2.grid_remove()
             self.entry_p2.grid_remove()
         elif choice == "Secant":
-            self.lbl_p1.configure(text="النقطة الأولى (x0):")
-            self.lbl_p2.configure(text="النقطة الثانية (x1):")
+            self.lbl_p1.configure(text=ar("النقطة الأولى (x0):"))
+            self.lbl_p2.configure(text=ar("النقطة الثانية (x1):"))
+            self.entry_p2.configure(placeholder_text="2.0")
+            self.lbl_p2.grid()
+            self.entry_p2.grid()
+        elif choice == "Modified Secant":
+            self.lbl_p1.configure(text=ar("النقطة الابتدائية (x0):"))
+            self.lbl_p2.configure(text=ar("نسبة التغيير (Delta / \u03b4):"))
+            self.entry_p2.delete(0, "end")
+            self.entry_p2.insert(0, "0.01")
+            self.entry_p2.configure(placeholder_text="0.01")
             self.lbl_p2.grid()
             self.entry_p2.grid()
 
@@ -217,7 +283,7 @@ class NumericalApp(ctk.CTk):
         try:
             raw_eq = self.entry_eq.get()
             if not raw_eq.strip():
-                self.res_roots.configure(text="خطأ: يرجى كتابة معادلة صحيحة!", text_color="#e74c3c")
+                self.res_roots.configure(text=ar("خطأ: يرجى كتابة معادلة صحيحة!"), text_color="#e74c3c")
                 return
 
             expr, f, x_sym = parse_math_expression(raw_eq)
@@ -237,22 +303,22 @@ class NumericalApp(ctk.CTk):
                     self.entry_p2.delete(0, "end")
                     self.entry_p2.insert(0, str(b))
                 elif a == b:
-                    self.res_roots.configure(text="خطأ: بداية الفترة ونهايتها متطابقتان!", text_color="#e74c3c")
+                    self.res_roots.configure(text=ar("خطأ: بداية الفترة ونهايتها متطابقتان!"), text_color="#e74c3c")
                     return
 
                 fa = f(a)
                 fb = f(b)
 
                 if abs(fa) < 1e-12:
-                    self.res_roots.configure(text=f"النقطة a = {a} هي جذر دقيق للمعادلة!", text_color="#2ecc71")
+                    self.res_roots.configure(text=ar(f"النقطة a = {a} هي جذر دقيق للمعادلة!"), text_color="#2ecc71")
                     return
                 if abs(fb) < 1e-12:
-                    self.res_roots.configure(text=f"النقطة b = {b} هي جذر دقيق للمعادلة!", text_color="#2ecc71")
+                    self.res_roots.configure(text=ar(f"النقطة b = {b} هي جذر دقيق للمعادلة!"), text_color="#2ecc71")
                     return
 
                 if fa * fb > 0:
                     self.res_roots.configure(
-                        text=f"خطأ: f({a})={fa:.4f} و f({b})={fb:.4f} لهما نفس الإشارة! شرط التغير في الإشارة غير محقق.",
+                        text=ar(f"خطأ: f({a})={fa:.4f} و f({b})={fb:.4f} لهما نفس الإشارة! شرط التغير في الإشارة غير محقق."),
                         text_color="#e74c3c"
                     )
                     return
@@ -267,7 +333,7 @@ class NumericalApp(ctk.CTk):
                     self.tree_roots.insert("", "end", values=(it, f"{a:.5f}", f"{b:.5f}", f"{c:.6f}", f"{fc:.6f}", f"{err:.6f}"))
 
                     if abs(fc) < 1e-12 or err < tol:
-                        self.res_roots.configure(text=f"تم الوصول للجذر التقريبي: {c:.6f} بعد {it} دورة (الخطأ: {err:.6f})", text_color="#2ecc71")
+                        self.res_roots.configure(text=ar(f"تم الوصول للجذر التقريبي: {c:.6f} بعد {it} دورة (الخطأ: {err:.6f})"), text_color="#2ecc71")
                         return
 
                     if fa * fc < 0:
@@ -277,23 +343,23 @@ class NumericalApp(ctk.CTk):
                         a = c
                         fa = fc
 
-                self.res_roots.configure(text=f"وصل للحد الأقصى للتكرارات ({max_iter}) دون الوصول للدقة المطلوبة. آخر قيمة: {last_c:.6f}", text_color="#e67e22")
+                self.res_roots.configure(text=ar(f"وصل للحد الأقصى للتكرارات ({max_iter}) دون الوصول للدقة المطلوبة. آخر قيمة: {last_c:.6f}"), text_color="#e67e22")
 
             # ---------------- Newton-Raphson ----------------
             elif method == "Newton-Raphson":
                 diff_expr = sp.diff(expr, x_sym)
                 df_num = sp.lambdify(x_sym, diff_expr, modules=['math'])
-                self.lbl_diff_info.configure(text=f"المشتقة المحسوبة: f'(x) = {diff_expr}")
+                self.lbl_diff_info.configure(text=ar(f"المشتقة المحسوبة: f'(x) = {diff_expr}"))
 
                 def safe_df(val):
                     res = float(df_num(float(val)))
                     if math.isnan(res) or math.isinf(res):
-                        raise ValueError("المشتقة غير معرفة")
+                        raise ValueError(ar("المشتقة غير معرفة"))
                     return res
 
                 x0 = float(self.entry_p1.get())
                 if abs(f(x0)) < 1e-12:
-                    self.res_roots.configure(text=f"النقطة الابتدائية x0 = {x0} هي جذر دقيق للمعادلة!", text_color="#2ecc71")
+                    self.res_roots.configure(text=ar(f"النقطة الابتدائية x0 = {x0} هي جذر دقيق للمعادلة!"), text_color="#2ecc71")
                     return
 
                 for it in range(1, max_iter + 1):
@@ -301,7 +367,7 @@ class NumericalApp(ctk.CTk):
                     dfx = safe_df(x0)
 
                     if abs(dfx) < 1e-14:
-                        self.res_roots.configure(text=f"خطأ: المشتقة تساوي صفراً عند x={x0:.5f}، لا يمكن القسمة عليها!", text_color="#e74c3c")
+                        self.res_roots.configure(text=ar(f"خطأ: المشتقة تساوي صفراً عند x={x0:.5f}، لا يمكن القسمة عليها!"), text_color="#e74c3c")
                         return
 
                     x1 = x0 - (fx / dfx)
@@ -310,16 +376,16 @@ class NumericalApp(ctk.CTk):
                     self.tree_roots.insert("", "end", values=(it, f"{x0:.5f}", f"{fx:.5f}", f"{dfx:.5f}", f"{x1:.6f}", f"{err:.6f}"))
 
                     if math.isnan(x1) or math.isinf(x1) or abs(x1) > 1e12:
-                        self.res_roots.configure(text="النظام متباعد (Diverges)! قيم x تتزايد بشكل لا نهائي.", text_color="#e74c3c")
+                        self.res_roots.configure(text=ar("النظام متباعد (Diverges)! قيم x تتزايد بشكل لا نهائي."), text_color="#e74c3c")
                         return
 
                     if err < tol or abs(f(x1)) < 1e-12:
-                        self.res_roots.configure(text=f"تم الوصول للجذر التقريبي: {x1:.6f} بعد {it} دورة", text_color="#2ecc71")
+                        self.res_roots.configure(text=ar(f"تم الوصول للجذر التقريبي: {x1:.6f} بعد {it} دورة"), text_color="#2ecc71")
                         return
 
                     x0 = x1
 
-                self.res_roots.configure(text=f"وصل للحد الأقصى للتكرارات ({max_iter}) دون الوصول للدقة المطلوبة. آخر قيمة: {x0:.6f}", text_color="#e67e22")
+                self.res_roots.configure(text=ar(f"وصل للحد الأقصى للتكرارات ({max_iter}) دون الوصول للدقة المطلوبة. آخر قيمة: {x0:.6f}"), text_color="#e67e22")
 
             # ---------------- Secant ----------------
             elif method == "Secant":
@@ -327,23 +393,23 @@ class NumericalApp(ctk.CTk):
                 x1 = float(self.entry_p2.get())
 
                 if x0 == x1:
-                    self.res_roots.configure(text="خطأ: يجب إدخال نقطتين مختلفتين (x0 != x1)!", text_color="#e74c3c")
+                    self.res_roots.configure(text=ar("خطأ: يجب إدخال نقطتين مختلفتين (x0 != x1)!"), text_color="#e74c3c")
                     return
 
                 f0 = f(x0)
                 f1 = f(x1)
 
                 if abs(f0) < 1e-12:
-                    self.res_roots.configure(text=f"النقطة x0 = {x0} هي جذر دقيق للمعادلة!", text_color="#2ecc71")
+                    self.res_roots.configure(text=ar(f"النقطة x0 = {x0} هي جذر دقيق للمعادلة!"), text_color="#2ecc71")
                     return
                 if abs(f1) < 1e-12:
-                    self.res_roots.configure(text=f"النقطة x1 = {x1} هي جذر دقيق للمعادلة!", text_color="#2ecc71")
+                    self.res_roots.configure(text=ar(f"النقطة x1 = {x1} هي جذر دقيق للمعادلة!"), text_color="#2ecc71")
                     return
 
                 for it in range(1, max_iter + 1):
                     denom = f1 - f0
                     if abs(denom) < 1e-14:
-                        self.res_roots.configure(text="خطأ: مقام قانون القاطع (f1 - f0) يساوي صفراً!", text_color="#e74c3c")
+                        self.res_roots.configure(text=ar("خطأ: مقام قانون القاطع (f1 - f0) يساوي صفراً!"), text_color="#e74c3c")
                         return
 
                     x2 = x1 - f1 * (x1 - x0) / denom
@@ -353,20 +419,63 @@ class NumericalApp(ctk.CTk):
                     self.tree_roots.insert("", "end", values=(it, f"{x0:.5f}", f"{x1:.5f}", f"{x2:.6f}", f"{f2:.6f}", f"{err:.6f}"))
 
                     if math.isnan(x2) or math.isinf(x2) or abs(x2) > 1e12:
-                        self.res_roots.configure(text="النظام متباعد (Diverges)! قيم x تتزايد بشكل لا نهائي.", text_color="#e74c3c")
+                        self.res_roots.configure(text=ar("النظام متباعد (Diverges)! قيم x تتزايد بشكل لا نهائي."), text_color="#e74c3c")
                         return
 
                     if err < tol or abs(f2) < 1e-12:
-                        self.res_roots.configure(text=f"تم الوصول للجذر التقريبي: {x2:.6f} بعد {it} دورة", text_color="#2ecc71")
+                        self.res_roots.configure(text=ar(f"تم الوصول للجذر التقريبي: {x2:.6f} بعد {it} دورة"), text_color="#2ecc71")
                         return
 
                     x0, f0 = x1, f1
                     x1, f1 = x2, f2
 
-                self.res_roots.configure(text=f"وصل للحد الأقصى للتكرارات ({max_iter}) دون الوصول للدقة المطلوبة. آخر قيمة: {x1:.6f}", text_color="#e67e22")
+                self.res_roots.configure(text=ar(f"وصل للحد الأقصى للتكرارات ({max_iter}) دون الوصول للدقة المطلوبة. آخر قيمة: {x1:.6f}"), text_color="#e67e22")
+
+            # ---------------- Modified Secant ----------------
+            elif method == "Modified Secant":
+                x0 = float(self.entry_p1.get())
+                delta_str = self.entry_p2.get().strip()
+                delta = float(delta_str) if delta_str else 0.01
+
+                if abs(delta) < 1e-15:
+                    self.res_roots.configure(text=ar("خطأ: قيمة نسبة التغيير (Delta) صغيرة جداً أو تساوي صفراً!"), text_color="#e74c3c")
+                    return
+
+                f0 = f(x0)
+                if abs(f0) < 1e-12:
+                    self.res_roots.configure(text=ar(f"النقطة الابتدائية x0 = {x0} هي جذر دقيق للمعادلة!"), text_color="#2ecc71")
+                    return
+
+                for it in range(1, max_iter + 1):
+                    h = delta * x0 if abs(x0) > 1e-12 else delta
+                    f_pert = f(x0 + h)
+                    denom = f_pert - f0
+
+                    if abs(denom) < 1e-14:
+                        self.res_roots.configure(text=ar("خطأ: مقام قانون القاطع المعدل f(x+h) - f(x) يساوي صفراً!"), text_color="#e74c3c")
+                        return
+
+                    x1 = x0 - (h * f0) / denom
+                    err = abs(x1 - x0)
+
+                    self.tree_roots.insert("", "end", values=(it, f"{x0:.5f}", f"{f0:.5f}", f"{f_pert:.5f}", f"{x1:.6f}", f"{err:.6f}"))
+
+                    if math.isnan(x1) or math.isinf(x1) or abs(x1) > 1e12:
+                        self.res_roots.configure(text=ar("النظام متباعد (Diverges)! قيم x تتزايد بشكل لا نهائي."), text_color="#e74c3c")
+                        return
+
+                    f_next = f(x1)
+                    if err < tol or abs(f_next) < 1e-12:
+                        self.res_roots.configure(text=ar(f"تم الوصول للجذر التقريبي: {x1:.6f} بعد {it} دورة (الخطأ: {err:.6f})"), text_color="#2ecc71")
+                        return
+
+                    x0 = x1
+                    f0 = f_next
+
+                self.res_roots.configure(text=ar(f"وصل للحد الأقصى للتكرارات ({max_iter}) دون الوصول للدقة المطلوبة. آخر قيمة: {x0:.6f}"), text_color="#e67e22")
 
         except Exception as e:
-            self.res_roots.configure(text=f"خطأ: {e}", text_color="#e74c3c")
+            self.res_roots.configure(text=ar(f"خطأ: {e}"), text_color="#e74c3c")
 
     # -------------------------------------------------------------
     # 2. تبويب المصفوفات والأنظمة الخطية (Jacobi & Gauss-Seidel)
@@ -377,7 +486,7 @@ class NumericalApp(ctk.CTk):
             self.tab_linear,
             values=["Gauss-Seidel", "Jacobi"],
             variable=self.linear_method_var,
-            font=("Segoe UI", 13, "bold"),
+            font=(self.font_family, 13, "bold"),
             height=32
         )
         self.linear_selector.pack(pady=8)
@@ -386,9 +495,9 @@ class NumericalApp(ctk.CTk):
         info_frame.pack(pady=4, padx=12, fill="x")
 
         # إدخال المصفوفة A
-        lbl_mat = ctk.CTkLabel(info_frame, text="مصفوفة المعاملات A (كل سطر يمثل معادلة، الأرقام مفصولة بمسافات):", font=("Segoe UI", 12, "bold"))
+        lbl_mat = ctk.CTkLabel(info_frame, text=ar("مصفوفة المعاملات A (كل سطر يمثل معادلة، الأرقام مفصولة بمسافات):"), font=(self.font_family, 12, "bold"))
         lbl_mat.pack(anchor="e", padx=10, pady=(4, 0))
-        self.txt_matrix = ctk.CTkTextbox(info_frame, height=75, font=("Consolas", 12))
+        self.txt_matrix = ctk.CTkTextbox(info_frame, height=75, font=(self.font_mono, 12))
         self.txt_matrix.insert("1.0", "4 1 -1\n2 7 1\n1 -3 12")
         self.txt_matrix.pack(fill="x", padx=10, pady=3)
 
@@ -396,31 +505,31 @@ class NumericalApp(ctk.CTk):
         param_grid = ctk.CTkFrame(info_frame, fg_color="transparent")
         param_grid.pack(fill="x", padx=10, pady=4)
 
-        lbl_b = ctk.CTkLabel(param_grid, text="الحدود المطلقة b:", font=("Segoe UI", 12))
+        lbl_b = ctk.CTkLabel(param_grid, text=ar("الحدود المطلقة b:"), font=(self.font_family, 12))
         lbl_b.grid(row=0, column=5, padx=5, sticky="e")
-        self.entry_b = ctk.CTkEntry(param_grid, placeholder_text="مثال: 3 19 31", width=140)
+        self.entry_b = ctk.CTkEntry(param_grid, placeholder_text=ar("مثال: 3 19 31"), width=140)
         self.entry_b.insert(0, "3 19 31")
         self.entry_b.grid(row=0, column=4, padx=5, sticky="w")
 
-        lbl_x0 = ctk.CTkLabel(param_grid, text="التخمين X0 (اختياري):", font=("Segoe UI", 12))
+        lbl_x0 = ctk.CTkLabel(param_grid, text=ar("التخمين X0 (اختياري):"), font=(self.font_family, 12))
         lbl_x0.grid(row=0, column=3, padx=5, sticky="e")
-        self.entry_x0 = ctk.CTkEntry(param_grid, placeholder_text="افتراضي: 0 0 0", width=120)
+        self.entry_x0 = ctk.CTkEntry(param_grid, placeholder_text=ar("افتراضي: 0 0 0"), width=120)
         self.entry_x0.grid(row=0, column=2, padx=5, sticky="w")
 
-        lbl_lin_tol = ctk.CTkLabel(param_grid, text="نسبة الخطأ:", font=("Segoe UI", 12))
+        lbl_lin_tol = ctk.CTkLabel(param_grid, text=ar("نسبة الخطأ:"), font=(self.font_family, 12))
         lbl_lin_tol.grid(row=0, column=1, padx=5, sticky="e")
         self.entry_lin_tol = ctk.CTkEntry(param_grid, width=75)
         self.entry_lin_tol.insert(0, "0.001")
         self.entry_lin_tol.grid(row=0, column=0, padx=5, sticky="w")
 
         # تنبيه السيادة القطرية
-        self.lbl_dom_status = ctk.CTkLabel(self.tab_linear, text="", font=("Segoe UI", 11, "italic"), text_color="#3498db")
+        self.lbl_dom_status = ctk.CTkLabel(self.tab_linear, text="", font=(self.font_family, 11, "italic"), text_color="#3498db")
         self.lbl_dom_status.pack(pady=2)
 
         self.btn_calc_linear = ctk.CTkButton(
             self.tab_linear,
-            text="حل النظام الخطي الآن",
-            font=("Segoe UI", 13, "bold"),
+            text=ar("حل النظام الخطي الآن"),
+            font=(self.font_family, 13, "bold"),
             fg_color="#1f538d",
             hover_color="#14375e",
             height=34,
@@ -428,7 +537,7 @@ class NumericalApp(ctk.CTk):
         )
         self.btn_calc_linear.pack(pady=4)
 
-        self.res_linear = ctk.CTkLabel(self.tab_linear, text="", font=("Segoe UI", 13, "bold"), wraplength=850)
+        self.res_linear = ctk.CTkLabel(self.tab_linear, text="", font=(self.font_family, 13, "bold"), wraplength=850)
         self.res_linear.pack(pady=2)
 
         # جدول عرض نتائج المتغيرات مع Scrollbar
@@ -446,9 +555,9 @@ class NumericalApp(ctk.CTk):
         self.linear_scroll.pack(side="right", fill="y")
         self.tree_linear.pack(side="left", fill="both", expand=True)
 
-        self.tree_linear.heading("Iter", text="الدورة")
-        self.tree_linear.heading("Values", text="قيم المجاهيل [x1, x2, x3, ...]")
-        self.tree_linear.heading("Error", text="أقصى خطأ (Max Error)")
+        self.tree_linear.heading("Iter", text=ar("الدورة"))
+        self.tree_linear.heading("Values", text=ar("قيم المجاهيل [x1, x2, x3, ...]"))
+        self.tree_linear.heading("Error", text=ar("أقصى خطأ (Max Error)"))
         self.tree_linear.column("Iter", width=80, anchor="center")
         self.tree_linear.column("Values", width=550, anchor="center")
         self.tree_linear.column("Error", width=160, anchor="center")
@@ -471,12 +580,12 @@ class NumericalApp(ctk.CTk):
 
             n = len(A)
             if n < 2:
-                self.res_linear.configure(text="خطأ: يجب إدخال معادلتين على الأقل!", text_color="#e74c3c")
+                self.res_linear.configure(text=ar("خطأ: يجب إدخال معادلتين على الأقل!"), text_color="#e74c3c")
                 return
 
             if n != len(b) or any(len(row) != n for row in A):
                 self.res_linear.configure(
-                    text=f"خطأ: أبعاد المصفوفة غير متطابقة! A تحتوي على {len(A)} أسطر، لكن الأسطر و متجه b يجب أن يكون لكل منها {n} عناصر.",
+                    text=ar(f"خطأ: أبعاد المصفوفة غير متطابقة! A تحتوي على {len(A)} أسطر، لكن الأسطر و متجه b يجب أن يكون لكل منها {n} عناصر."),
                     text_color="#e74c3c"
                 )
                 return
@@ -486,19 +595,19 @@ class NumericalApp(ctk.CTk):
             if raw_x0:
                 x = [float(val) for val in raw_x0.split()]
                 if len(x) != n:
-                    self.res_linear.configure(text=f"خطأ: التخمين الابتدائي يجب أن يحتوي على {n} أرقام!", text_color="#e74c3c")
+                    self.res_linear.configure(text=ar(f"خطأ: التخمين الابتدائي يجب أن يحتوي على {n} أرقام!"), text_color="#e74c3c")
                     return
             else:
                 x = [0.0] * n
 
             # التحقق من السيادة القطرية وإعادة الترتيب التلقائي
             A, b, is_dom, dom_msg = make_diagonally_dominant(A, b)
-            self.lbl_dom_status.configure(text=f"[معاينة السيادة القطرية]: {dom_msg}")
+            self.lbl_dom_status.configure(text=ar(f"[معاينة السيادة القطرية]: {dom_msg}"))
 
             # التحقق من أن عناصر القطر الرئيسي لا تساوي صفراً
             for i in range(n):
                 if abs(A[i][i]) < 1e-12:
-                    self.res_linear.configure(text=f"خطأ: العنصر A[{i+1}][{i+1}] يساوي صفراً، لا يمكن القسمة عليه!", text_color="#e74c3c")
+                    self.res_linear.configure(text=ar(f"خطأ: العنصر A[{i+1}][{i+1}] يساوي صفراً، لا يمكن القسمة عليه!"), text_color="#e74c3c")
                     return
 
             for it in range(1, 101):
@@ -521,17 +630,17 @@ class NumericalApp(ctk.CTk):
 
                 # فحص التباعد
                 if math.isnan(err) or math.isinf(err) or err > 1e12:
-                    self.res_linear.configure(text="النظام متباعد (Diverges)! تأكد من تحقق شرط السيادة القطرية للمصفوفة.", text_color="#e74c3c")
+                    self.res_linear.configure(text=ar("النظام متباعد (Diverges)! تأكد من تحقق شرط السيادة القطرية للمصفوفة."), text_color="#e74c3c")
                     return
 
                 if err < tol:
-                    self.res_linear.configure(text=f"تم الوصول للحل بنجاح: {formatted_vals} بعد {it} دورة", text_color="#2ecc71")
+                    self.res_linear.configure(text=ar(f"تم الوصول للحل بنجاح: {formatted_vals} بعد {it} دورة"), text_color="#2ecc71")
                     return
 
-            self.res_linear.configure(text=f"وصل للحد الأقصى للتكرارات (100) دون الوصول للدقة المطلوبة. آخر قيم: {formatted_vals}", text_color="#e67e22")
+            self.res_linear.configure(text=ar(f"وصل للحد الأقصى للتكرارات (100) دون الوصول للدقة المطلوبة. آخر قيم: {formatted_vals}"), text_color="#e67e22")
 
         except Exception as e:
-            self.res_linear.configure(text=f"خطأ في الإدخال: {e}", text_color="#e74c3c")
+            self.res_linear.configure(text=ar(f"خطأ في الإدخال: {e}"), text_color="#e74c3c")
 
 if __name__ == "__main__":
     app = NumericalApp()
