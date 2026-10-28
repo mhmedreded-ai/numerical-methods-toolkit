@@ -6,19 +6,30 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-# تهيئة مسار مكتبات Tk/Tcl الاحتياطية في حال عدم تثبيتها على مستوى النظام (Arch Linux)
-venv_lib = os.path.join(BASE_DIR, ".venv", "lib")
-if os.path.exists(os.path.join(venv_lib, "libtk8.6.so")):
-    current_ld = os.environ.get("LD_LIBRARY_PATH", "")
-    if venv_lib not in current_ld.split(":"):
-        os.environ["LD_LIBRARY_PATH"] = f"{venv_lib}:{current_ld}" if current_ld else venv_lib
-        os.environ["TCL_LIBRARY"] = os.path.join(venv_lib, "tcl8.6")
-        os.environ["TK_LIBRARY"] = os.path.join(venv_lib, "tk8.6")
-        if len(sys.argv) > 0 and sys.argv[0] != "-c":
-            os.execv(sys.executable, [sys.executable] + sys.argv)
-    else:
-        os.environ.setdefault("TCL_LIBRARY", os.path.join(venv_lib, "tcl8.6"))
-        os.environ.setdefault("TK_LIBRARY", os.path.join(venv_lib, "tk8.6"))
+# تهيئة الترميز للطرفية لدعم اللغة العربية بشكل سليم على أنظمة Windows و macOS و Linux
+if sys.platform == "win32":
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+# تهيئة مسار مكتبات Tk/Tcl الاحتياطية في حال تشغيل بيئة لينكس بدون تثبيت tk على مستوى النظام
+if sys.platform.startswith("linux"):
+    venv_lib = os.path.join(BASE_DIR, ".venv", "lib")
+    if os.path.exists(os.path.join(venv_lib, "libtk8.6.so")):
+        current_ld = os.environ.get("LD_LIBRARY_PATH", "")
+        if venv_lib not in current_ld.split(":"):
+            os.environ["LD_LIBRARY_PATH"] = f"{venv_lib}:{current_ld}" if current_ld else venv_lib
+            os.environ["TCL_LIBRARY"] = os.path.join(venv_lib, "tcl8.6")
+            os.environ["TK_LIBRARY"] = os.path.join(venv_lib, "tk8.6")
+            if len(sys.argv) > 0 and sys.argv[0] != "-c":
+                os.execv(sys.executable, [sys.executable] + sys.argv)
+        else:
+            os.environ.setdefault("TCL_LIBRARY", os.path.join(venv_lib, "tcl8.6"))
+            os.environ.setdefault("TK_LIBRARY", os.path.join(venv_lib, "tk8.6"))
 
 import customtkinter as ctk
 import sympy as sp
@@ -44,7 +55,10 @@ from regression import (
 def ar(text):
     if not text:
         return ""
-    return get_display(arabic_reshaper.reshape(str(text)))
+    try:
+        return get_display(arabic_reshaper.reshape(str(text)))
+    except Exception:
+        return str(text)
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -66,17 +80,32 @@ class NumericalApp(ctk.CTk):
         self.geometry("1020x820")
         self.minsize(900, 700)
 
-        # تحديد الخطوط المتوافقة تلقائياً (Segoe UI لويندوز، Noto Sans/DejaVu للينكس/Hyprland)
+        # تحديد الخطوط المتوافقة تلقائياً (Segoe UI لويندوز، Geeza Pro لماك، Noto Sans/DejaVu للينكس)
         self.font_family = "Segoe UI"
         self.font_mono = "Consolas"
         try:
             import tkinter.font as tkfont
             available = set(tkfont.families(self))
-            for cand in ["Segoe UI", "Noto Sans Arabic", "Noto Sans", "DejaVu Sans", "Liberation Sans"]:
+            for cand in [
+                "Segoe UI",
+                "Noto Sans Arabic",
+                "Geeza Pro",
+                "Noto Sans",
+                "DejaVu Sans",
+                "Liberation Sans",
+                "Arial"
+            ]:
                 if cand in available:
                     self.font_family = cand
                     break
-            for mono_cand in ["Consolas", "DejaVu Sans Mono", "Liberation Mono", "monospace"]:
+            for mono_cand in [
+                "Consolas",
+                "Menlo",
+                "DejaVu Sans Mono",
+                "Liberation Mono",
+                "Courier New",
+                "monospace"
+            ]:
                 if mono_cand in available:
                     self.font_mono = mono_cand
                     break

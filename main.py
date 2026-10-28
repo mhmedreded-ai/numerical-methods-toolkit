@@ -2,6 +2,16 @@ import os
 import subprocess
 import sys
 
+# تهيئة الترميز للطرفية لدعم اللغة العربية بشكل سليم على أنظمة Windows و macOS و Linux
+if sys.platform == "win32":
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # ضمان أن مسار المجلد الحالي مضاف للمسارات المعتمدة
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
