@@ -110,9 +110,20 @@ def menu() -> None:
         except Exception as e:
             print(f"\nحدث خطأ غير متوقع: {e}")
 
+def is_android() -> bool:
+    """Detect whether the script is executing inside an Android container (Buildozer / p4a)."""
+    return (
+        "ANDROID_ARGUMENT" in os.environ
+        or "ANDROID_ROOT" in os.environ
+        or "ANDROID_BOOTLOGO" in os.environ
+        or "PYTHON_SERVICE_ARGUMENT" in os.environ
+        or "P4A_BOOTSTRAP" in os.environ
+        or hasattr(sys, "getandroidapilevel")
+        or os.path.exists("/system/build.prop")
+    )
+
 if __name__ == "__main__":
-    # If running inside an Android APK environment (p4a/buildozer) or with --mobile flag
-    if "ANDROID_ARGUMENT" in os.environ or "PYTHON_SERVICE_ARGUMENT" in os.environ or "P4A_BOOTSTRAP" in os.environ or "--mobile" in sys.argv:
+    if is_android() or "--mobile" in sys.argv:
         launch_mobile_gui()
     else:
         menu()

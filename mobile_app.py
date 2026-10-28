@@ -33,8 +33,12 @@ from kivy.uix.button import Button
 from kivy.uix.spinner import Spinner
 from kivy.graphics import Color, RoundedRectangle, Rectangle
 
-import arabic_reshaper
-from bidi.algorithm import get_display
+try:
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+    HAS_ARABIC_RESHAPER = True
+except ImportError:
+    HAS_ARABIC_RESHAPER = False
 
 # Import pure mathematical numerical algorithms
 from math_utils import parse_math_expression, check_strictly_diagonally_dominant, make_diagonally_dominant
@@ -69,6 +73,8 @@ def ar(text: Any) -> str:
     """Reshape and reorder Arabic text for bidirectional rendering."""
     if not text:
         return ""
+    if not HAS_ARABIC_RESHAPER:
+        return str(text)
     try:
         s = str(text)
         reshaped = arabic_reshaper.reshape(s)
