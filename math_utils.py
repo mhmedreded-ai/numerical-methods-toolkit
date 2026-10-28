@@ -1,5 +1,19 @@
+"""
+Mathematical Utilities & Symbolic Expression Parsing Engine.
+
+This module provides foundational helper functions used across the numerical
+methods suite:
+    1. Parsing arbitrary mathematical strings into symbolic expressions (SymPy)
+       and safe callable numerical functions with domain validation.
+    2. Evaluating strict and weak diagonal dominance of matrix systems.
+    3. Applying heuristic and permutation-based row reordering to transform
+       linear systems into diagonally dominant form for guaranteed iterative
+       convergence (Jacobi and Gauss-Seidel).
+"""
+
 import math
 import itertools
+from typing import Tuple, Callable, Any, List
 import sympy as sp
 from sympy.parsing.sympy_parser import (
     parse_expr,
@@ -8,7 +22,11 @@ from sympy.parsing.sympy_parser import (
     convert_xor
 )
 
+# SymPy parsing transformation pipeline allowing natural human syntax
+# e.g., implicit multiplication '2x', '3(x+1)', and caret '^' for exponentiation
 TRANSFORMATIONS = standard_transformations + (implicit_multiplication_application, convert_xor)
+
+# Mapping standard mathematical constant aliases to SymPy equivalents
 LOCAL_DICT = {
     'e': sp.E,
     'E': sp.E,
@@ -16,52 +34,99 @@ LOCAL_DICT = {
     'ln': sp.log
 }
 
-def parse_math_expression(expr_str: str):
-    """
-    يقوم بتحويل النص إلى تعبير رمزي SymPy ودالة عددية.
-    يدعم الضرب الضمني مثل 2x، والأس ^، وثابت أويلر e.
+def parse_math_expression(expr_str: str) -> Tuple[sp.Expr, Callable[[float], float], sp.Symbol]:
+    """Parse a user-supplied mathematical string into a SymPy expression and numerical callable.
+
+    Supports implicit multiplication (e.g. '2x'), caret powers (e.g. 'x^3'),
+    Euler's constant 'e', and transcendental functions ('sin', 'cos', 'exp', etc.).
+
+    Args:
+        expr_str (str): Raw mathematical formula string in terms of variable 'x'.
+
+    Returns:
+        Tuple[sp.Expr, Callable[[float], float], sp.Symbol]:
+            - expr: The symbolic SymPy expression.
+            - safe_f: A callable wrapper function f(val) returning float, with NaN/Inf guards.
+            - x: The primary SymPy symbol object for 'x'.
+
+    Raises:
+        ValueError: If the expression string is empty, contains unrecognized free symbols
+            other than 'x', or fails to parse syntactically.
     """
     clean_str = expr_str.strip()
+    if not clean_str:
+        raise ValueError("تعبير رياضي فارغ! يرجى إدخال معادلة صالحة بدلالة x.")
+
     x = sp.Symbol('x')
     expr = parse_expr(clean_str, transformations=TRANSFORMATIONS, local_dict=LOCAL_DICT)
-    
-    # التأكد من أن التعبير لا يحتوي على متغيرات أخرى غير x
+
+    # Ensure no free symbols exist besides 'x'
     free_vars = expr.free_symbols - {x}
     if free_vars:
-        raise ValueError(f"تم العثور على رموز غير معروفة: {', '.join(str(s) for s in free_vars)} - يرجى استخدام المتغير x فقط.")
-        
+        symbol_list = ', '.join(str(s) for s in free_vars)
+        raise ValueError(f"تم العثور على رموز غير معروفة: {symbol_list} - يرجى استخدام المتغير x فقط.")
+
     f_num = sp.lambdify(x, expr, modules=['math'])
-    
-    def safe_f(val):
+
+    def safe_f(val: float) -> float:
+        """Evaluate f(val) with floating-point safety and error interception."""
         try:
             res = float(f_num(float(val)))
             if math.isnan(res) or math.isinf(res):
-                raise ValueError("قيمة غير معرفة أو غير منتهية")
+                raise ValueError("قيمة غير معرفة أو غير منتهية (NaN / Infinity)")
             return res
         except (ValueError, OverflowError, ZeroDivisionError) as err:
             raise ValueError(f"خطأ رياضي عند حساب f({val}): {err}")
-            
+
     return expr, safe_f, x
 
-def check_diagonally_dominant(A):
-    """
-    يتحقق من الشرط الكافي لتقارب طرق التكرار (Jacobi & Gauss-Seidel):
-    السيادة القطرية الصارمة أو الضعيفة.
+def check_diagonally_dominant(A: List[List[float]]) -> Tuple[bool, bool]:
+    """Check whether matrix A satisfies diagonal dominance.
+
+    A matrix A of size n x n is diagonally dominant if:
+        |A[i][i]| >= sum(|A[i][j]| for j != i) for all i.
+    It is strictly diagonally dominant if:
+        |A[i][i]| > sum(|A[i][j]| for j != i) for all i.
+
+    Strict diagonal dominance is a sufficient condition for the convergence of
+    the Jacobi and Gauss-Seidel iterative methods.
+
+    Args:
+        A (List[List[float]]): Square coefficient matrix.
+
+    Returns:
+        Tuple[bool, bool]:
+            - is_dominant: True if A is weakly or strictly diagonally dominant.
+            - is_strict: True if strict inequality holds for all rows.
     """
     n = len(A)
-    strict = False
+    strict = True
     for i in range(n):
         diag = abs(A[i][i])
         row_sum = sum(abs(A[i][j]) for j in range(n) if j != i)
         if diag < row_sum:
-            return False, False  # ليست مهيمنة
-        if diag > row_sum:
-            strict = True
+            return False, False  # Violates diagonal dominance
+        if diag == row_sum:
+            strict = False
+
     return True, strict
 
-def make_diagonally_dominant(A, b):
-    """
-    يحاول إعادة ترتيب صفوف المصفوفة A و b لتصبح مهيمنة قطرياً إن أمكن.
+def make_diagonally_dominant(A: List[List[float]], b: List[float]) -> Tuple[List[List[float]], List[float], bool, str]:
+    """Reorder rows of linear system A x = b to achieve diagonal dominance if possible.
+
+    Uses an exact permutation search for small systems (n <= 8) and a greedy
+    pivot selection algorithm for larger matrices to minimize zero-diagonals.
+
+    Args:
+        A (List[List[float]]): Coefficient matrix.
+        b (List[float]): Constant right-hand side vector.
+
+    Returns:
+        Tuple[List[List[float]], List[float], bool, str]:
+            - new_A: Permuted coefficient matrix.
+            - new_b: Permuted right-hand side vector.
+            - success: True if strictly or weakly diagonally dominant.
+            - message: Explanatory Arabic status message for UI/CLI feedback.
     """
     n = len(A)
     is_dom, is_strict = check_diagonally_dominant(A)
@@ -69,7 +134,7 @@ def make_diagonally_dominant(A, b):
         desc = "المصفوفة مهيمنة قطرياً بشكل صارم" if is_strict else "المصفوفة مهيمنة قطرياً بشكل ضعيف"
         return A, b, True, desc
 
-    # إذا كان الحجم صغيراً، نجرب التباديل
+    # For small systems (n <= 8), perform exhaustive permutation search
     if n <= 8:
         for p in itertools.permutations(range(n)):
             perm_A = [A[i] for i in p]
@@ -78,8 +143,7 @@ def make_diagonally_dominant(A, b):
                 perm_b = [b[i] for i in p]
                 return perm_A, perm_b, True, "تمت إعادة ترتيب المعادلات تلقائياً لتحقيق السيادة القطرية"
 
-    # طريقة جشعة لضمان عدم وجود أصفار على القطر على الأقل
-    # محاولة تعيين الصف ذو المعامل الأكبر في العمود i للسطر i
+    # Greedy pivot matching to minimize zero-diagonals for larger systems
     perm = [-1] * n
     used_rows = set()
     for col in range(n):

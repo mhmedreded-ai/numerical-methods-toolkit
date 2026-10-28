@@ -1,15 +1,67 @@
+"""
+Regression and Curve Fitting Module (الانحدار ومواءمة المنحنيات).
+
+Theory & Mathematical Background:
+    Curve fitting seeks an empirical functional relationship y ≈ f(x) that best describes
+    a discrete dataset {(x_i, y_i)}_{i=1}^n under the Least-Squares criterion:
+        Minimize S_r = sum_{i=1}^n (y_i - f(x_i))^2
+
+Supported Models:
+    1. Linear Regression:
+       y = a_0 + a_1 * x
+       Coefficients are directly computed from the 2x2 normal equations:
+           a_1 = (n * sum(x*y) - sum(x)*sum(y)) / (n * sum(x^2) - (sum(x))^2)
+           a_0 = mean(y) - a_1 * mean(x)
+
+    2. Polynomial Regression (Degree m):
+       y = a_0 + a_1 * x + a_2 * x^2 + ... + a_m * x^m
+       Constructs the (m+1) x (m+1) symmetric Vandermonde-normal equations:
+           sum_{k=0}^m [ a_k * sum(x_i^{j+k}) ] = sum(x_i^j * y_i)   for j = 0, ..., m
+       and solves for coefficients [a_0, ..., a_m] using Gaussian elimination with
+       partial row pivoting.
+
+    3. Exponential Fitting:
+       y = a * e^(b * x)
+       Transformed logarithmically into linear form:
+           ln(y) = ln(a) + b * x
+       Requires all y_i > 0.
+
+    4. Power Function Fitting:
+       y = a * x^b
+       Transformed logarithmically into linear form:
+           ln(y) = ln(a) + b * ln(x)
+       Requires all x_i > 0 and y_i > 0.
+
+Statistical Metrics Computed:
+    - S_t: Total sum of squares around the mean: sum((y_i - mean(y))^2).
+    - S_r (SSE): Residual sum of squares: sum((y_i - y_pred_i)^2).
+    - R^2: Coefficient of determination: (S_t - S_r) / S_t.
+    - r: Correlation coefficient: sqrt(R^2).
+    - S_{y/x}: Standard error of the estimate: sqrt(S_r / (n - (m + 1))).
+"""
+
+from typing import List, Tuple, Dict, Any, Callable, Union
 import math
 
-def solve_linear_system_gaussian(A, b):
-    """
-    حل نظام خطي A * x = b باستخدام الحذف الغاوسي مع التبديل الجزئي للصفوف (Partial Pivoting).
+def solve_linear_system_gaussian(A: List[List[float]], b: List[float]) -> List[float]:
+    """Solve linear system A * x = b using Gaussian elimination with partial pivoting.
+
+    Args:
+        A (List[List[float]]): Square coefficient matrix n x n.
+        b (List[float]): Right-hand side vector of length n.
+
+    Returns:
+        List[float]: Unique solution vector x of length n.
+
+    Raises:
+        ValueError: If matrix A is singular or numerically rank-deficient.
     """
     n = len(A)
-    # إنشاء مصفوفة مدمجة A|b
+    # Construct augmented matrix [A | b]
     M = [row[:] + [b[i]] for i, row in enumerate(A)]
 
     for i in range(n):
-        # البحث عن أكبر عنصر في العمود للتبديل الجزئي
+        # Search for maximal pivot element in column i
         max_row = i
         max_val = abs(M[i][i])
         for k in range(i + 1, n):
@@ -22,13 +74,13 @@ def solve_linear_system_gaussian(A, b):
 
         M[i], M[max_row] = M[max_row], M[i]
 
-        # تصفير ما تحت القطر
+        # Eliminate sub-diagonal entries
         for k in range(i + 1, n):
             factor = M[k][i] / M[i][i]
             for j in range(i, n + 1):
                 M[k][j] -= factor * M[i][j]
 
-    # التعويض العكسي (Back Substitution)
+    # Back-substitution
     x = [0.0] * n
     for i in range(n - 1, -1, -1):
         s = sum(M[i][j] * x[j] for j in range(i + 1, n))
@@ -36,9 +88,22 @@ def solve_linear_system_gaussian(A, b):
 
     return x
 
-def compute_dense_curve(x_min, x_max, eval_func, num_points=200):
-    """
-    توليد نقاط ناعمة لرسم المنحنى بدقة.
+def compute_dense_curve(
+    x_min: float,
+    x_max: float,
+    eval_func: Callable[[float], float],
+    num_points: int = 200
+) -> Tuple[List[float], List[float]]:
+    """Generate high-density smooth points for accurate curve plotting.
+
+    Args:
+        x_min (float): Minimum X bound.
+        x_max (float): Maximum X bound.
+        eval_func (Callable[[float], float]): Mathematical prediction function.
+        num_points (int, optional): Density count. Defaults to 200.
+
+    Returns:
+        Tuple[List[float], List[float]]: (x_dense, y_dense) coordinate lists.
     """
     if x_min == x_max:
         return [x_min], [eval_func(x_min)]
@@ -53,14 +118,22 @@ def compute_dense_curve(x_min, x_max, eval_func, num_points=200):
             y_dense.append(float('nan'))
     return x_dense, y_dense
 
-def calculate_metrics(y_actual, y_pred, num_params):
-    """
-    حساب مقاييس جودة التوفيق:
-    - St: مجموع مربعات الانحرافات عن المتوسط
-    - Sr / SSE: مجموع مربعات البواقي (الخطأ)
-    - R^2: معامل التحديد (Coefficient of Determination)
-    - r: معامل الارتباط (Correlation Coefficient)
-    - Sy/x: الخطأ المعياري للتقدير (Standard Error of the Estimate)
+def calculate_metrics(y_actual: List[float], y_pred: List[float], num_params: int) -> Dict[str, Any]:
+    """Compute standard goodness-of-fit statistical indicators.
+
+    Args:
+        y_actual (List[float]): Actual observed target values.
+        y_pred (List[float]): Fitted model predicted values.
+        num_params (int): Number of estimated parameters in the model.
+
+    Returns:
+        Dict[str, Any]: Dictionary containing:
+            - 'st': Total sum of squares.
+            - 'sr': Residual sum of squares (SSE).
+            - 'r2': Coefficient of determination R^2 in [0, 1].
+            - 'r': Correlation coefficient.
+            - 'syx': Standard error of the estimate S_{y/x}.
+            - 'residuals': Residual differences list [y_i - y_pred_i].
     """
     n = len(y_actual)
     y_mean = sum(y_actual) / n
@@ -90,9 +163,19 @@ def calculate_metrics(y_actual, y_pred, num_params):
         "residuals": residuals
     }
 
-def linear_regression(x, y):
-    """
-    الانحدار الخطي البسيط: y = a0 + a1 * x
+def linear_regression(x: List[float], y: List[float]) -> Dict[str, Any]:
+    """Perform simple linear regression: y = a0 + a1 * x.
+
+    Args:
+        x (List[float]): Independent variable data points.
+        y (List[float]): Dependent variable observations.
+
+    Returns:
+        Dict[str, Any]: Complete regression result dictionary with coefficients,
+            equation string, metrics, and dense plotting coordinates.
+
+    Raises:
+        ValueError: If fewer than 2 points are provided or if all X values are identical.
     """
     n = len(x)
     if n < 2:
@@ -110,7 +193,7 @@ def linear_regression(x, y):
     a1 = (n * sum_xy - sum_x * sum_y) / denom
     a0 = (sum_y - a1 * sum_x) / n
 
-    def predict(val):
+    def predict(val: float) -> float:
         return a0 + a1 * val
 
     y_pred = [predict(xi) for xi in x]
@@ -138,9 +221,19 @@ def linear_regression(x, y):
         "y_curve": y_dense
     }
 
-def polynomial_regression(x, y, degree=2):
-    """
-    انحدار متعدد الحدود: y = a0 + a1*x + a2*x^2 + ... + am*x^m
+def polynomial_regression(x: List[float], y: List[float], degree: int = 2) -> Dict[str, Any]:
+    """Fit a polynomial of arbitrary degree m: y = a0 + a1*x + ... + am*x^m.
+
+    Args:
+        x (List[float]): Independent variable data points.
+        y (List[float]): Dependent variable observations.
+        degree (int, optional): Polynomial degree m >= 1. Defaults to 2.
+
+    Returns:
+        Dict[str, Any]: Complete regression result dictionary.
+
+    Raises:
+        ValueError: If degree < 1 or if number of points n <= degree.
     """
     n = len(x)
     m = int(degree)
@@ -149,7 +242,7 @@ def polynomial_regression(x, y, degree=2):
     if n <= m:
         raise ValueError(f"عدد النقاط ({n}) يجب أن يكون أكبر من درجة كثير الحدود ({m}).")
 
-    # تكوين مصفوفة المعادلات القياسية (Normal Equations) بحجم (m+1) x (m+1)
+    # Construct the (m+1) x (m+1) normal equations matrix
     M = [[0.0] * (m + 1) for _ in range(m + 1)]
     v = [0.0] * (m + 1)
 
@@ -160,7 +253,7 @@ def polynomial_regression(x, y, degree=2):
 
     coeffs = solve_linear_system_gaussian(M, v)
 
-    def predict(val):
+    def predict(val: float) -> float:
         return sum(c * (val ** p) for p, c in enumerate(coeffs))
 
     y_pred = [predict(xi) for xi in x]
@@ -198,10 +291,22 @@ def polynomial_regression(x, y, degree=2):
         "y_curve": y_dense
     }
 
-def exponential_regression(x, y):
-    """
-    المواءمة الأسية (Exponential Fit): y = a * e^(b * x)
-    عن طريق التحويل اللوغاريتمي: ln(y) = ln(a) + b * x
+def exponential_regression(x: List[float], y: List[float]) -> Dict[str, Any]:
+    """Fit an exponential model: y = a * e^(b * x) via logarithmic linearization.
+
+    Linear transformation:
+        ln(y) = ln(a) + b * x
+
+    Args:
+        x (List[float]): Independent variable data points.
+        y (List[float]): Dependent variable observations (must all be > 0).
+
+    Returns:
+        Dict[str, Any]: Complete regression result dictionary.
+
+    Raises:
+        ValueError: If fewer than 2 points are provided, if any y_i <= 0,
+            or if all X values are identical.
     """
     n = len(x)
     if n < 2:
@@ -212,7 +317,6 @@ def exponential_regression(x, y):
 
     ln_y = [math.log(yi) for yi in y]
 
-    # انحدار خطي على (x, ln(y))
     sum_x = sum(x)
     sum_lny = sum(ln_y)
     sum_x2 = sum(xi ** 2 for xi in x)
@@ -226,15 +330,13 @@ def exponential_regression(x, y):
     ln_a = (sum_lny - b * sum_x) / n
     a = math.exp(ln_a)
 
-    def predict(val):
+    def predict(val: float) -> float:
         return a * math.exp(b * val)
 
     y_pred = [predict(xi) for xi in x]
     metrics = calculate_metrics(y, y_pred, num_params=2)
 
-    sign = "+" if b >= 0 else "-"
     eq_str = f"y = {a:.5f} * e^({b:.5f} * x)"
-
     x_dense, y_dense = compute_dense_curve(min(x), max(x), predict)
 
     return {
@@ -254,10 +356,22 @@ def exponential_regression(x, y):
         "y_curve": y_dense
     }
 
-def power_regression(x, y):
-    """
-    مواءمة دالة القوى (Power Fit): y = a * x^b
-    عن طريق التحويل اللوغاريتمي: ln(y) = ln(a) + b * ln(x)
+def power_regression(x: List[float], y: List[float]) -> Dict[str, Any]:
+    """Fit a power model: y = a * x^b via logarithmic linearization.
+
+    Linear transformation:
+        ln(y) = ln(a) + b * ln(x)
+
+    Args:
+        x (List[float]): Independent variable data points (must all be > 0).
+        y (List[float]): Dependent variable observations (must all be > 0).
+
+    Returns:
+        Dict[str, Any]: Complete regression result dictionary.
+
+    Raises:
+        ValueError: If fewer than 2 points are provided, if any x_i <= 0 or y_i <= 0,
+            or if all ln(X) values are identical.
     """
     n = len(x)
     if n < 2:
@@ -284,14 +398,13 @@ def power_regression(x, y):
     ln_a = (sum_lny - b * sum_lnx) / n
     a = math.exp(ln_a)
 
-    def predict(val):
+    def predict(val: float) -> float:
         return a * (val ** b)
 
     y_pred = [predict(xi) for xi in x]
     metrics = calculate_metrics(y, y_pred, num_params=2)
 
     eq_str = f"y = {a:.5f} * x^({b:.5f})"
-
     x_dense, y_dense = compute_dense_curve(min(x), max(x), predict)
 
     return {
@@ -311,9 +424,25 @@ def power_regression(x, y):
         "y_curve": y_dense
     }
 
-def fit_curve(x, y, method="linear", degree=2):
-    """
-    دالة موحدة لاختيار طريقة الانحدار والمواءمة.
+def fit_curve(
+    x: List[float],
+    y: List[float],
+    method: str = "linear",
+    degree: int = 2
+) -> Dict[str, Any]:
+    """Unified dispatcher for all supported curve fitting models.
+
+    Args:
+        x (List[float]): X values.
+        y (List[float]): Y values.
+        method (str, optional): One of 'linear', 'polynomial', 'exponential', 'power'. Defaults to "linear".
+        degree (int, optional): Polynomial degree if method is 'polynomial'. Defaults to 2.
+
+    Returns:
+        Dict[str, Any]: Complete regression result dictionary.
+
+    Raises:
+        ValueError: If an unrecognized method identifier is provided.
     """
     m = method.lower()
     if m in ["linear", "خطي"]:
@@ -327,7 +456,8 @@ def fit_curve(x, y, method="linear", degree=2):
     else:
         raise ValueError(f"طريقة غير معروفة: {method}. الطرق المتاحة: linear, polynomial, exponential, power.")
 
-def solve_regression():
+def solve_regression() -> None:
+    """Run an interactive CLI session for curve fitting and regression."""
     print("\n" + "=" * 60)
     print("      الانحدار ومواءمة المنحنيات (Curve Fitting & Regression)")
     print("=" * 60)

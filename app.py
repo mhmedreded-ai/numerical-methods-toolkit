@@ -1,3 +1,35 @@
+"""
+Math 3 - Numerical Analysis Desktop Application (CustomTkinter GUI).
+
+This module implements the primary Graphical User Interface for the Math 3 numerical
+analysis suite. Built using CustomTkinter, standard Tkinter Treeview widgets, and
+embedded Matplotlib visualization canvases.
+
+Application Architecture & Tab Organization:
+    1. Root Finding Tab (جذور المعادلات):
+       - Bisection Method
+       - Newton-Raphson Method (with automatic symbolic derivative preview)
+       - Secant Method
+       - Modified Secant Method (with fractional perturbation δ)
+       - Dynamic input fields, error handling, and scrollable Treeview iteration table.
+
+    2. Linear Systems Tab (الأنظمة الخطية):
+       - Jacobi Iteration Method
+       - Gauss-Seidel Iteration Method
+       - Automated diagonal dominance pre-conditioning detection and permutation.
+       - Vector iteration grid and convergence status reporting.
+
+    3. Curve Fitting & Regression Tab (الانحدار ومواءمة المنحنيات):
+       - Linear, Polynomial (degree m), Exponential, and Power models.
+       - Residual analysis table comparing observed Y vs predicted Y and error e_i.
+       - Embedded local Matplotlib dark-themed plot comparing scatter points vs fitted curve.
+
+Cross-Platform Compatibility:
+    - Bidirectional Arabic text shaping via arabic-reshaper + python-bidi (ar() helper).
+    - Dynamic font cascade (Segoe UI on Windows, Geeza Pro on macOS, Noto Sans / DejaVu on Linux).
+    - Wayland / High-DPI screen scaling customization via CTK_SCALING environment variable.
+"""
+
 import os
 import sys
 import math
@@ -52,7 +84,19 @@ from regression import (
     fit_curve
 )
 
-def ar(text):
+def ar(text: str) -> str:
+    """Reshape and reorder Arabic text for correct bidirectional rendering in Tkinter.
+
+    Uses arabic-reshaper to connect glyphs according to Arabic orthography and
+    python-bidi to order characters from right to left, preventing disjointed or
+    reversed text on Linux/Wayland and across Tkinter platforms.
+
+    Args:
+        text (str): Input string containing Arabic, English, or mixed characters.
+
+    Returns:
+        str: Reshaped, correctly ordered string ready for Tkinter widgets.
+    """
     if not text:
         return ""
     try:
@@ -73,7 +117,18 @@ if "CTK_SCALING" in os.environ:
         pass
 
 class NumericalApp(ctk.CTk):
+    """Main desktop application window for the Math 3 Numerical Analysis Suite.
+
+    Inherits from CustomTkinter's ctk.CTk and orchestrates the user interface,
+    styling, algorithm dispatch, and dynamic result rendering across the three
+    main numerical domains:
+        - Root Finding (Bisection, Newton-Raphson, Secant, Modified Secant).
+        - Linear Systems (Jacobi, Gauss-Seidel).
+        - Curve Fitting & Regression (Linear, Polynomial, Exponential, Power).
+    """
+
     def __init__(self):
+        """Initialize UI geometry, font cascade, theme, and tab components."""
         super().__init__()
 
         self.title("Math 3 - Numerical Analysis Suite (التحليل العددي)")
@@ -136,6 +191,7 @@ class NumericalApp(ctk.CTk):
         self.setup_regression_tab()
 
     def setup_treeview_styles(self):
+        """Configure dark-mode palette styling for ttk.Treeview data tables."""
         style = ttk.Style()
         style.theme_use("clam")
         style.configure(
@@ -163,6 +219,7 @@ class NumericalApp(ctk.CTk):
     # 1. تبويب جذور المعادلات (Bisection, Newton-Raphson, Secant)
     # -------------------------------------------------------------
     def setup_roots_tab(self):
+        """Construct the Root Finding GUI tab layout, inputs, and iteration table."""
         self.root_method_var = ctk.StringVar(value="Bisection")
         self.root_selector = ctk.CTkSegmentedButton(
             self.tab_roots, 
@@ -250,6 +307,7 @@ class NumericalApp(ctk.CTk):
         self.update_root_headings("Bisection")
 
     def update_root_headings(self, method):
+        """Update Treeview column headers to match the active root-finding algorithm."""
         if method == "Bisection":
             cols = [
                 ("c1", ar("الدورة"), 70),
@@ -292,6 +350,7 @@ class NumericalApp(ctk.CTk):
             self.tree_roots.column(col_id, width=width, anchor="center")
 
     def update_root_inputs(self, choice):
+        """Dynamically configure input field labels and defaults when switching root methods."""
         self.update_root_headings(choice)
         self.lbl_diff_info.configure(text="")
         if choice == "Bisection":
@@ -320,6 +379,7 @@ class NumericalApp(ctk.CTk):
             self.entry_p2.grid()
 
     def calculate_roots(self):
+        """Validate input parameters, execute the selected root solver, and display results."""
         for row in self.tree_roots.get_children():
             self.tree_roots.delete(row)
         self.res_roots.configure(text="")
@@ -525,6 +585,7 @@ class NumericalApp(ctk.CTk):
     # 2. تبويب المصفوفات والأنظمة الخطية (Jacobi & Gauss-Seidel)
     # -------------------------------------------------------------
     def setup_linear_tab(self):
+        """Construct the Linear Systems GUI tab layout and matrix input controls."""
         self.linear_method_var = ctk.StringVar(value="Gauss-Seidel")
         self.linear_selector = ctk.CTkSegmentedButton(
             self.tab_linear,
@@ -607,6 +668,7 @@ class NumericalApp(ctk.CTk):
         self.tree_linear.column("Error", width=160, anchor="center")
 
     def calculate_linear(self):
+        """Parse matrix inputs, apply diagonal dominance check, and execute iterative linear solvers."""
         for row in self.tree_linear.get_children():
             self.tree_linear.delete(row)
         self.res_linear.configure(text="")
@@ -690,6 +752,7 @@ class NumericalApp(ctk.CTk):
     # 3. تبويب الانحدار ومواءمة المنحنيات (Regression & Curve Fitting)
     # -------------------------------------------------------------
     def setup_regression_tab(self):
+        """Construct the Curve Fitting & Regression GUI tab layout, table, and plot canvas."""
         # 1. محدد الطريقة (Linear, Polynomial, Exponential, Power)
         self.reg_method_var = ctk.StringVar(value="Linear")
         self.reg_selector = ctk.CTkSegmentedButton(
@@ -854,6 +917,7 @@ class NumericalApp(ctk.CTk):
         self.canvas_reg.draw()
 
     def apply_dark_plot_style(self, ax):
+        """Apply dark theme colors to Matplotlib axes, grid, spines, and labels."""
         ax.set_facecolor('#1e2227')
         ax.tick_params(colors='#abb2bf', labelsize=8)
         for spine in ax.spines.values():
@@ -863,6 +927,7 @@ class NumericalApp(ctk.CTk):
         ax.set_ylabel("Y", color='#abb2bf', fontsize=9)
 
     def update_regression_inputs(self, choice=None):
+        """Show or hide polynomial degree inputs based on model selection."""
         if choice is None:
             choice = self.reg_method_var.get()
         if choice == "Polynomial":
@@ -871,6 +936,7 @@ class NumericalApp(ctk.CTk):
             self.deg_container.pack_forget()
 
     def load_sample_regression_data(self):
+        """Populate sample dataset suited for the currently active regression model."""
         method = self.reg_method_var.get()
         self.entry_reg_x.delete(0, "end")
         self.entry_reg_y.delete(0, "end")
@@ -891,6 +957,7 @@ class NumericalApp(ctk.CTk):
             self.entry_reg_y.insert(0, "0.5, 2.0, 4.5, 8.0, 12.5")
 
     def clear_regression_inputs(self):
+        """Clear all regression input fields, metrics, table rows, and plot axes."""
         self.entry_reg_x.delete(0, "end")
         self.entry_reg_y.delete(0, "end")
         self.lbl_reg_eq.configure(text=ar("معادلة المنحنى: في انتظار الحساب..."))
@@ -903,6 +970,7 @@ class NumericalApp(ctk.CTk):
         self.canvas_reg.draw()
 
     def calculate_regression(self):
+        """Execute curve fitting calculation, update metrics, table, and plot canvas."""
         self.lbl_reg_error.configure(text="")
         method = self.reg_method_var.get()
 

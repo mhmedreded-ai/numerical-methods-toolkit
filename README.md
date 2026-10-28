@@ -1,292 +1,285 @@
-# Numerical Methods & Analysis Toolkit (Math 3)
+# Math 3 - Numerical Analysis Suite (CustomTkinter GUI)
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](https://github.com/mhmedreded-ai/numerical-methods-toolkit)
-[![GUI](https://img.shields.io/badge/GUI-CustomTkinter-darkblue.svg)](https://github.com/TomSchimansky/CustomTkinter)
-[![Engine](https://img.shields.io/badge/Math%20Engine-SymPy-orange.svg)](https://www.sympy.org/)
+[![Platform](https://img.shields.io/badge/platform-Arch%20Linux%20%7C%20Linux%20%7C%20Windows%20%7C%20macOS-lightgrey.svg)](https://github.com/mhmedreded-ai/numerical-methods-toolkit)
+[![GUI Framework](https://img.shields.io/badge/GUI-CustomTkinter%206.0-darkblue.svg)](https://github.com/TomSchimansky/CustomTkinter)
+[![Math Engine](https://img.shields.io/badge/Engine-SymPy%201.14-orange.svg)](https://www.sympy.org/)
+[![Visualization](https://img.shields.io/badge/Plotting-Matplotlib%203.11-success.svg)](https://matplotlib.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-A comprehensive, fully cross-platform Python numerical analysis suite for root-finding, solving linear systems, and performing regression and curve fitting. The project pairs rigorous mathematical algorithms with both an interactive terminal interface (CLI) and a modern dark-themed Graphical User Interface (GUI) with embedded Matplotlib visualizations.
+A high-performance, cross-platform numerical analysis desktop suite engineered with **Python**, **CustomTkinter**, **SymPy**, and **Matplotlib**. Designed for university-level engineering mathematics (Math 3 / Numerical Methods), it combines mathematically rigorous algorithm implementations, an interactive command-line interface (CLI), and a modern dark-themed Graphical User Interface (GUI) with embedded real-time curve plotting and bidirectional Arabic text rendering.
 
 ---
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Algorithms Implemented](#algorithms-implemented)
-  - [1. Root-Finding Methods](#1-root-finding-methods)
-    - [Bisection Method (`bisection.py`)](#bisection-method-bisectionpy)
-    - [Newton-Raphson Method (`newton_raphson.py`)](#newton-raphson-method-newton_raphsonpy)
-    - [Secant Method (`secant.py`)](#secant-method-secantpy)
-    - [Modified Secant Method (`modified_secant.py`)](#modified-secant-method-modified_secantpy)
+- [Architecture & Directory Structure](#architecture--directory-structure)
+- [Mathematical Methods Explained](#mathematical-methods-explained)
+  - [1. Root Finding](#1-root-finding)
+    - [Bisection Method](#bisection-method)
+    - [Newton-Raphson Method](#newton-raphson-method)
+    - [Secant Method](#secant-method)
+    - [Modified Secant Method](#modified-secant-method)
   - [2. Linear Systems Solvers](#2-linear-systems-solvers)
-    - [Jacobi Iteration Method (`jacobi.py`)](#jacobi-iteration-method-jacobipy)
-    - [Gauss-Seidel Method (`gauss_seidel.py` / `sedil.py`)](#gauss-seidel-method-gauss_seidelpy--sedilpy)
-  - [3. Curve Fitting & Regression](#3-curve-fitting--regression)
+    - [Jacobi Iteration Method](#jacobi-iteration-method)
+    - [Gauss-Seidel Method](#gauss-seidel-method)
+    - [Strict Diagonal Dominance Condition](#strict-diagonal-dominance-condition)
+  - [3. Regression & Curve Fitting](#3-regression--curve-fitting)
     - [Linear Regression](#linear-regression)
     - [Polynomial Regression](#polynomial-regression)
     - [Exponential Fitting](#exponential-fitting)
     - [Power Function Fitting](#power-function-fitting)
-  - [4. Interfaces & Engine](#4-interfaces--engine)
-    - [Mathematical Utilities Engine (`math_utils.py`)](#mathematical-utilities-engine-math_utilspy)
-    - [Modern GUI (`app.py`)](#modern-gui-apppy)
-    - [Interactive CLI (`main.py`)](#interactive-cli-mainpy)
-- [Cross-Platform Installation](#cross-platform-installation)
-  - [Windows](#windows)
-  - [Linux (Ubuntu, Debian, Arch, Fedora)](#linux-ubuntu-debian-arch-fedora)
-  - [macOS](#macos)
-- [Usage & Examples](#usage--examples)
-  - [One-Click Launchers](#one-click-launchers)
-  - [Terminal Menu Walkthrough](#terminal-menu-walkthrough)
-- [Convergence & Theoretical Comparison](#convergence--theoretical-comparison)
-- [Contributing](#contributing)
+    - [Statistical Metrics](#statistical-metrics)
+- [System Requirements & Arch Linux Setup](#system-requirements--arch-linux-setup)
+  - [System Prerequisites](#system-prerequisites)
+  - [Virtual Environment & Installation](#virtual-environment--installation)
+  - [Arabic Text Rendering & BiDi Support](#arabic-text-rendering--bidi-support)
+- [How to Run the Application](#how-to-run-the-application)
+- [Status & Role of `main.py`](#status--role-of-mainpy)
+- [Troubleshooting & Common Pitfalls](#troubleshooting--common-pitfalls)
+  - [1. Missing Tkinter on Arch Linux](#1-missing-tkinter-on-arch-linux)
+  - [2. IDE Interpreter Path Resolution](#2-ide-interpreter-path-resolution)
+  - [3. Wayland / Hyprland Display Scaling](#3-wayland--hyprland-display-scaling)
 - [License](#license)
 
 ---
 
-## Overview
+## Architecture & Directory Structure
 
-Numerical analysis is at the heart of engineering and scientific computation. Real-world mathematical equations often lack analytical closed-form solutions or require iterative approximations for linear systems and empirical data fitting.
+```
+numerical-methods-toolkit/
+├── app.py                  # Primary CustomTkinter Desktop Application (GUI entry point)
+├── main.py                 # Interactive Terminal Menu Runner (CLI entry point)
+├── math_utils.py           # SymPy parsing engine, safety lambdifier, diagonal dominance tools
+├── bisection.py            # Bisection algorithm + CLI solver
+├── newton_raphson.py       # Newton-Raphson algorithm with symbolic derivative + CLI solver
+├── secant.py               # Classical Secant algorithm + CLI solver
+├── modified_secant.py      # Modified Secant with fractional perturbation + CLI solver
+├── jacobi.py               # Jacobi linear system solver + CLI solver
+├── gauss_seidel.py         # Gauss-Seidel linear system solver + CLI solver
+├── sedil.py                # Legacy redirect alias for gauss_seidel.py
+├── regression.py           # Curve fitting engine (Linear, Poly, Exp, Power) + CLI solver
+├── run.sh                  # One-click executable launcher for Linux and macOS
+├── run.bat                 # One-click launcher for Windows (UTF-8 enabled)
+├── requirements.txt        # Pinned and cross-platform compatible Python dependencies
+├── README.md               # English technical documentation and manual
+├── README_AR.md            # Complete Arabic documentation (النسخة العربية الكاملة)
+└── LICENSE                 # MIT License file
+```
 
-**Math 3 Numerical Methods Suite** provides:
-1. Exact and reliable numerical approximations for single-variable non-linear roots.
-2. Iterative solvers for linear equation systems $A\mathbf{x} = \mathbf{b}$ with automated conditioning.
-3. High-precision curve fitting and regression models with comprehensive statistical correlation metrics ($R^2$, $S_{y/x}$, $\text{SSE}$).
-4. Flexible math expression parsing that supports natural human syntax like `2x`, `e^x`, `sin(x)`, and `x^3`.
-5. Seamless cross-platform execution on Windows, Linux, and macOS with bidirectional Arabic shaping (`arabic-reshaper` + `python-bidi`).
+### Module Responsibilities
+
+| File | Type | Primary Role & Responsibility |
+| :--- | :--- | :--- |
+| [`app.py`](file:///home/myarch/Projects/math%203/app.py) | **GUI Core** | Implements `NumericalApp(ctk.CTk)`: 3 tabbed interfaces (Roots, Linear, Regression), Treeview styling, inputs, error popups, and embedded Matplotlib visualizer. |
+| [`main.py`](file:///home/myarch/Projects/math%203/main.py) | **CLI Core** | Provides an 8-option interactive terminal menu to run all algorithms headlessly or launch the GUI. |
+| [`math_utils.py`](file:///home/myarch/Projects/math%203/math_utils.py) | **Utility Engine** | SymPy string expression parser (with implicit multiplication like `2x`), safe mathematical evaluation guards, and diagonal dominance permutation algorithms. |
+| [`bisection.py`](file:///home/myarch/Projects/math%203/bisection.py) | **Algorithm** | Implements the interval halving bracketing root-finding method. |
+| [`newton_raphson.py`](file:///home/myarch/Projects/math%203/newton_raphson.py) | **Algorithm** | Implements analytical derivative projection root-finding. |
+| [`secant.py`](file:///home/myarch/Projects/math%203/secant.py) | **Algorithm** | Implements two-point finite difference secant root-finding. |
+| [`modified_secant.py`](file:///home/myarch/Projects/math%203/modified_secant.py) | **Algorithm** | Implements single-point fractional perturbation secant root-finding. |
+| [`jacobi.py`](file:///home/myarch/Projects/math%203/jacobi.py) | **Algorithm** | Implements simultaneous relaxation for linear systems $A\mathbf{x} = \mathbf{b}$. |
+| [`gauss_seidel.py`](file:///home/myarch/Projects/math%203/gauss_seidel.py) | **Algorithm** | Implements successive in-place displacements for linear systems. |
+| [`regression.py`](file:///home/myarch/Projects/math%203/regression.py) | **Algorithm** | Implements Gaussian elimination with partial pivoting, normal equation generation, Least-Squares optimization, and statistical indicators ($R^2, S_{y/x}, \text{SSE}$). |
 
 ---
 
-## Key Features
+## Mathematical Methods Explained
 
-- **Robust Expression Parser**: Evaluates mathematical strings into symbolic expressions and numerical functions using SymPy, with support for implicit multiplication, standard transcendental functions, and Euler's constant ($e$).
-- **Automated Matrix Conditioning**: Automatically detects strictly and weakly diagonally dominant matrices and applies permutation algorithms to reorder rows for guaranteed iterative convergence.
-- **Statistical Quality Metrics**: Computes model coefficients, standard error of the estimate ($S_{y/x}$), coefficient of determination ($R^2$), and residual sum of squares ($S_r$).
-- **Detailed Iteration Tracking**: Tabulates iteration counter, intermediate variable values, function residuals, and absolute/relative errors at every step.
-- **Fault-Tolerant Execution**: Safeguards against division by zero, stationary points with zero derivative, diverging iterations, and invalid bracket intervals.
-- **Embedded Visualizer**: Embedded Matplotlib canvas styled in dark theme (`#23272e` / `#1e2227`) for real-time scatter and regression curve plotting.
-- **Cross-Platform Compatibility**: Native font fallback (Segoe UI on Windows, Geeza Pro on macOS, Noto Sans / DejaVu on Linux) and UTF-8 terminal encoding configuration.
+### 1. Root Finding
 
----
+Root-finding methods solve for real values $x^*$ such that $f(x^*) = 0$.
 
-## Algorithms Implemented
-
-### 1. Root-Finding Methods
-
-Root-finding algorithms locate values of $x$ such that $f(x) = 0$.
-
-#### Bisection Method (`bisection.py`)
-- **Theory**: Based on Bolzano's Intermediate Value Theorem. If a continuous function $f(x)$ on $[a, b]$ satisfies $f(a) \cdot f(b) < 0$, at least one root exists in the interval. The interval is repeatedly halved:
+#### Bisection Method
+- **Theory**: Based on Bolzano's Intermediate Value Theorem. Given continuous $f(x)$ on $[a, b]$ with $f(a) \cdot f(b) < 0$, the root is iteratively bracketed:
   $$c = \frac{a + b}{2}$$
-- **Characteristics**:
-  - Guaranteed linear convergence with rate $\mathcal{O}(2^{-n})$.
-  - Absolute error bound: $\text{Error} = \frac{b - a}{2^n}$.
-  - Robust against erratic initial guesses as long as the root is bracketed.
-- **File**: [`bisection.py`](file:///home/myarch/Projects/math%203/bisection.py)
+- **Sub-interval Update**:
+  - If $f(a) \cdot f(c) < 0 \implies b = c$.
+  - Else $a = c$.
+- **Stopping Criteria**: $|f(c)| < \text{tol}$ or $(b - a)/2 < \text{tol}$.
+- **Convergence**: Guaranteed linear convergence with rate $\mathcal{O}(2^{-n})$. Error at step $n$ is bounded by $(b - a)/2^n$.
 
-#### Newton-Raphson Method (`newton_raphson.py`)
-- **Theory**: Uses first-order Taylor expansion and the tangent line to iteratively project toward the $x$-intercept:
+#### Newton-Raphson Method
+- **Theory**: Derived from the 1st-order Taylor expansion $f(x) \approx f(x_n) + f'(x_n)(x - x_n)$. Projecting the tangent line to the $x$-axis yields:
   $$x_{n+1} = x_n - \frac{f(x_n)}{f'(x_n)}$$
-- **Characteristics**:
-  - Automatically computes exact symbolic analytical derivatives $f'(x)$ using SymPy.
-  - Quadratic convergence $\mathcal{O}(h^2)$ near simple roots.
-  - Includes checks for zero derivatives ($f'(x) \approx 0$) to avoid division by zero.
-- **File**: [`newton_raphson.py`](file:///home/myarch/Projects/math%203/newton_raphson.py)
+- **Stopping Criteria**: $|f(x_{n+1})| < \text{tol}$ or $|x_{n+1} - x_n| < \text{tol}$.
+- **Convergence**: Quadratic $\mathcal{O}(h^2)$ near simple roots.
+- **Edge Cases**: Fails if derivative vanishes ($f'(x_n) \approx 0$).
 
-#### Secant Method (`secant.py`)
-- **Theory**: Eliminates the requirement to compute the derivative by approximating $f'(x_n)$ with the finite difference secant line between two previous estimates $x_{n-1}$ and $x_n$:
-  $$x_{n+1} = x_n - f(x_n) \frac{x_n - x_{n-1}}{f(x_n) - f(x_{n-1})}$$
-- **Characteristics**:
-  - Superlinear convergence rate of the golden ratio $\phi \approx 1.618$.
-  - Requires two initial points $x_0, x_1$, but does not require bracketing.
-  - Includes divergence monitoring to prevent floating-point runaway.
-- **File**: [`secant.py`](file:///home/myarch/Projects/math%203/secant.py)
+#### Secant Method
+- **Theory**: Replaces analytical differentiation in Newton-Raphson with the finite backward difference quotient across two points $x_{n-1}$ and $x_n$:
+  $$x_{n+1} = x_n - f(x_n) \cdot \frac{x_n - x_{n-1}}{f(x_n) - f(x_{n-1})}$$
+- **Stopping Criteria**: $|f(x_{n+1})| < \text{tol}$ or $|x_{n+1} - x_n| < \text{tol}$.
+- **Convergence**: Superlinear with order equal to the golden ratio $\phi \approx 1.618$. Requires no derivatives.
 
-#### Modified Secant Method (`modified_secant.py`)
-- **Theory**: Uses a single initial estimate $x_i$ and a fractional perturbation parameter $\delta$ (default $0.01$) rather than requiring two separate points:
+#### Modified Secant Method
+- **Theory**: Overcomes the two-point requirement of the classical secant method by perturbing a single point $x_i$ by a fractional fraction $\delta$ (default $\delta = 0.01$):
   $$x_{i+1} = x_i - \frac{\delta \cdot x_i \cdot f(x_i)}{f(x_i + \delta \cdot x_i) - f(x_i)}$$
-- **Characteristics**:
-  - Only needs a single starting value $x_0$.
-  - Avoids computing analytical derivatives while converging with superlinear efficiency.
-  - Gracefully handles stationary denominators.
-- **File**: [`modified_secant.py`](file:///home/myarch/Projects/math%203/modified_secant.py)
+- **Stopping Criteria**: $|f(x_{i+1})| < \text{tol}$ or $|x_{i+1} - x_i| < \text{tol}$.
+- **Characteristics**: Only requires a single starting value $x_0$. Includes zero-pivot handling for $x_i \approx 0$ by setting perturbation step $h = \delta$.
 
 ---
 
 ### 2. Linear Systems Solvers
 
-Iterative solvers find the solution vector $\mathbf{x} \in \mathbb{R}^n$ for systems of the form:
+Iterative solvers approximate the solution $\mathbf{x} \in \mathbb{R}^n$ of the linear system:
 $$A\mathbf{x} = \mathbf{b}$$
 
-#### Jacobi Iteration Method (`jacobi.py`)
-- **Theory**: Decomposes $A$ into diagonal ($D$), strictly lower triangular ($L$), and strictly upper triangular ($U$) components. Updates all coordinates simultaneously based strictly on values from the previous iteration $k$:
+#### Jacobi Iteration Method
+- **Theory**: Decomposes $A = D + L + U$ (Diagonal, strictly Lower, strictly Upper). All coordinates are updated simultaneously:
   $$x_i^{(k+1)} = \frac{1}{a_{ii}} \left( b_i - \sum_{j \neq i} a_{ij} x_j^{(k)} \right)$$
-- **Characteristics**:
-  - Simultaneous/parallelizable updates.
-  - Verifies diagonal dominance condition $\sum_{j \ne i} |a_{ij}| < |a_{ii}|$.
-  - Reports maximum norm error $\max_i |x_i^{(k+1)} - x_i^{(k)}|$.
-- **File**: [`jacobi.py`](file:///home/myarch/Projects/math%203/jacobi.py)
+- **Memory**: Requires two separate state vectors ($\mathbf{x}^{(k)}$ and $\mathbf{x}^{(k+1)}$).
 
-#### Gauss-Seidel Method (`gauss_seidel.py` / `sedil.py`)
-- **Theory**: Uses successive displacements where newly calculated components $x_j^{(k+1)}$ for $j < i$ are immediately incorporated into the current iteration:
+#### Gauss-Seidel Method
+- **Theory**: Incorporates newly calculated components $x_j^{(k+1)}$ for $j < i$ immediately into the ongoing evaluation of row $i$:
   $$x_i^{(k+1)} = \frac{1}{a_{ii}} \left( b_i - \sum_{j < i} a_{ij} x_j^{(k+1)} - \sum_{j > i} a_{ij} x_j^{(k)} \right)$$
-- **Characteristics**:
-  - Typically converges twice as fast as Jacobi for diagonally dominant or symmetric positive-definite systems.
-  - Requires less memory as state updates occur in place.
-- **Files**: [`gauss_seidel.py`](file:///home/myarch/Projects/math%203/gauss_seidel.py) and [`sedil.py`](file:///home/myarch/Projects/math%203/sedil.py) (legacy alias redirect).
+- **Memory**: Updates in-place using a single vector $\mathbf{x}$. Typically converges twice as fast as Jacobi.
+
+#### Strict Diagonal Dominance Condition
+A sufficient condition for both Jacobi and Gauss-Seidel convergence is that $A$ is **strictly diagonally dominant**:
+$$|a_{ii}| > \sum_{j \neq i} |a_{ij}| \quad \forall i \in \{1, \dots, n\}$$
+The toolkit includes [`make_diagonally_dominant(A, b)`](file:///home/myarch/Projects/math%203/math_utils.py) which automatically evaluates row sums and applies row permutations to ensure the convergence condition is met before solving.
 
 ---
 
-### 3. Curve Fitting & Regression (`regression.py`)
+### 3. Regression & Curve Fitting
 
-Implements standard curve fitting methods via normal equations and logarithmic linearization:
+Fits an empirical curve $y \approx f(x)$ to discrete observations $\{(x_i, y_i)\}_{i=1}^n$ by minimizing the residual sum of squares:
+$$\min \sum_{i=1}^n (y_i - f(x_i))^2$$
 
-- **Linear Regression**:
-  $$y = a_0 + a_1 x$$
-- **Polynomial Regression**:
-  $$y = a_0 + a_1 x + a_2 x^2 + \dots + a_m x^m$$
-  Builds and solves the $(m+1) \times (m+1)$ Vandermonde-normal system using Gaussian elimination with partial pivoting.
-- **Exponential Regression**:
-  $$y = a \cdot e^{b x} \quad \Longleftarrow \quad \ln(y) = \ln(a) + b x$$
-- **Power Function Regression**:
-  $$y = a \cdot x^b \quad \Longleftarrow \quad \ln(y) = \ln(a) + b \ln(x)$$
+#### Linear Regression
+Fits $y = a_0 + a_1 x$ via analytical 2x2 normal equations:
+$$a_1 = \frac{n \sum x_i y_i - \sum x_i \sum y_i}{n \sum x_i^2 - (\sum x_i)^2}, \quad a_0 = \bar{y} - a_1 \bar{x}$$
 
-**Computed Statistical Indicators:**
-- $S_t = \sum (y_i - \bar{y})^2$ (Total sum of squares)
-- $S_r = \text{SSE} = \sum (y_i - \hat{y}_i)^2$ (Residual sum of squares)
-- $S_{y/x} = \sqrt{\frac{S_r}{n - (m + 1)}}$ (Standard error of the estimate)
-- $R^2 = \frac{S_t - S_r}{S_t}$ (Coefficient of determination)
-- Residual evaluation table comparing actual $y_i$ vs predicted $\hat{y}_i$ and residuals $e_i$.
-- **File**: [`regression.py`](file:///home/myarch/Projects/math%203/regression.py)
+#### Polynomial Regression
+Fits $y = a_0 + a_1 x + a_2 x^2 + \dots + a_m x^m$ by constructing the $(m+1) \times (m+1)$ symmetric normal equations system:
+$$\begin{bmatrix}
+n & \sum x_i & \dots & \sum x_i^m \\
+\sum x_i & \sum x_i^2 & \dots & \sum x_i^{m+1} \\
+\vdots & \vdots & \ddots & \vdots \\
+\sum x_i^m & \sum x_i^{m+1} & \dots & \sum x_i^{2m}
+\end{bmatrix}
+\begin{bmatrix} a_0 \\ a_1 \\ \vdots \\ a_m \end{bmatrix}
+=
+\begin{bmatrix} \sum y_i \\ \sum x_i y_i \\ \vdots \\ \sum x_i^m y_i \end{bmatrix}$$
+Solved via Gaussian elimination with partial pivoting in `regression.py`.
 
----
+#### Exponential Fitting
+Fits $y = a \cdot e^{b x}$ via logarithmic linearization $\ln(y) = \ln(a) + b x$ (requires $y_i > 0$).
 
-### 4. Interfaces & Engine
+#### Power Function Fitting
+Fits $y = a \cdot x^b$ via logarithmic linearization $\ln(y) = \ln(a) + b \ln(x)$ (requires $x_i > 0, y_i > 0$).
 
-#### Mathematical Utilities Engine (`math_utils.py`)
-- `parse_math_expression(expr_str)`: Normalizes implicit multiplication, transforms powers, maps constants, and builds callable numerical lambdas.
-- `check_diagonally_dominant(A)`: Evaluates strict and weak diagonal dominance.
-- `make_diagonally_dominant(A, b)`: Applies optimal row permutations to ensure convergence before iterative solving.
-- **File**: [`math_utils.py`](file:///home/myarch/Projects/math%203/math_utils.py)
-
-#### Modern GUI (`app.py`)
-- Built with `CustomTkinter`, `ttk.Treeview`, and `matplotlib.backends.backend_tkagg.FigureCanvasTkAgg`.
-- Three main tabs:
-  1. **Root Finding (جذور المعادلات)**: Bisection, Newton-Raphson, Secant, and Modified Secant.
-  2. **Linear Systems (الأنظمة الخطية)**: Jacobi and Gauss-Seidel with automated diagonal dominance validation.
-  3. **Regression & Curve Fitting (الانحدار ومواءمة المنحنيات)**: Model selector, degree spinner, residual data grid, and interactive dark-themed Matplotlib plot.
-- **File**: [`app.py`](file:///home/myarch/Projects/math%203/app.py)
-
-#### Interactive CLI (`main.py`)
-- Terminal-driven numerical suite menu with 8 selectable workflows.
-- Fully compatible with standard UTF-8 terminals across Windows, Linux, and macOS.
-- **File**: [`main.py`](file:///home/myarch/Projects/math%203/main.py)
+#### Statistical Metrics
+- **Total Sum of Squares**: $S_t = \sum (y_i - \bar{y})^2$
+- **Residual Sum of Squares**: $S_r = \text{SSE} = \sum (y_i - \hat{y}_i)^2$
+- **Coefficient of Determination**: $R^2 = \frac{S_t - S_r}{S_t} \in [0, 1]$
+- **Correlation Coefficient**: $r = \pm \sqrt{R^2}$
+- **Standard Error of the Estimate**: $S_{y/x} = \sqrt{\frac{S_r}{n - (m + 1)}}$
 
 ---
 
-## Cross-Platform Installation
+## System Requirements & Arch Linux Setup
 
-### Windows
-1. Install **Python 3.10+** from [python.org](https://www.python.org/downloads/) (check the box **"Add Python to PATH"** during setup).
-2. Clone or download the repository:
-   ```cmd
-   git clone https://github.com/mhmedreded-ai/numerical-methods-toolkit.git
-   cd numerical-methods-toolkit
-   ```
-3. Install dependencies:
-   ```cmd
-   pip install -r requirements.txt
-   ```
-4. Double-click `run.bat` or run:
-   ```cmd
-   python app.py
-   ```
+### System Prerequisites
+- **Operating System**: Arch Linux (Linux 6.x / 7.x), Wayland/Hyprland or X11. (Also fully supports Ubuntu, Fedora, Debian, Windows 10/11, macOS).
+- **Python**: Version **3.10** or higher.
+- **Tcl/Tk**: Required by Tkinter C-extensions on Linux.
 
-### Linux (Ubuntu, Debian, Arch, Fedora)
-Tkinter requires the standard `tk` system package on Linux:
-- **Ubuntu / Debian**:
-  ```bash
-  sudo apt update && sudo apt install python3 python3-pip python3-tk
-  ```
-- **Arch Linux**:
-  ```bash
-  sudo pacman -S tk python
-  ```
-- **Fedora**:
-  ```bash
-  sudo dnf install python3 python3-tkinter
-  ```
-
-Then install the dependencies:
+### Arch Linux System Packages
+Arch Linux packages Python and Tk separately. You must install `tk`:
 ```bash
+sudo pacman -S tk python
+```
+
+### Virtual Environment & Installation
+From the project root:
+
+```bash
+# 1. Create a dedicated virtual environment
+python3 -m venv .venv
+
+# 2. Activate the environment
+source .venv/bin/activate
+
+# 3. Upgrade pip to ensure latest wheel resolution
+pip install --upgrade pip
+
+# 4. Install all dependencies
 pip install -r requirements.txt
+```
+
+### Arabic Text Rendering & BiDi Support
+Tkinter on Linux natively lacks OpenType/Complex Text Layout (CTL) shaping for Arabic script, causing glyphs to appear disconnected and reversed from left to right (e.g. `ةلداعملا` instead of `المعادلة`).
+
+This repository completely resolves this issue by incorporating:
+1. `arabic-reshaper`: Connects Arabic characters according to their initial, medial, final, or isolated position in words.
+2. `python-bidi`: Applies the Unicode Bidirectional Algorithm (UBA) to invert display order for Right-to-Left (RTL) reading.
+3. Central `ar(text)` helper function: Automatically handles all static labels, placeholders, Treeview headers, and plot legends.
+
+---
+
+## How to Run the Application
+
+### 1. Launch the Graphical Desktop App (Recommended)
+```bash
+# Ensure virtual environment is active
+./.venv/bin/python app.py
+
+# Alternatively, using the one-click shell script:
 ./run.sh
-# or
-python3 app.py
 ```
 
-### macOS
-1. Install Python via Homebrew (recommended) to include Tkinter bindings:
-   ```bash
-   brew install python python-tk
-   ```
-2. Install dependencies:
-   ```bash
-   pip3 install -r requirements.txt
-   ```
-3. Launch via:
-   ```bash
-   ./run.sh
-   # or
-   python3 app.py
-   ```
-
----
-
-## Usage & Examples
-
-### One-Click Launchers
-- **Windows**: Double-click [`run.bat`](file:///home/myarch/Projects/math%203/run.bat)
-- **Linux / macOS**: Run `./run.sh`
-
-### Terminal Menu Walkthrough
-Execute `python main.py` to open the terminal menu:
-```text
-==================================================
-     حاسبة طرق Math 3 (التحليل العددي الشامل)
-==================================================
-1. Bisection Method (طريقة تنصيف الفترات)
-2. Newton-Raphson Method (طريقة نيوتن-رافسون)
-3. Secant Method (طريقة القاطع)
-4. Modified Secant Method (طريقة القاطع المعدلة)
-5. Jacobi Method (طريقة جاكوبي للأنظمة الخطية)
-6. Gauss-Seidel Method (طريقة جاوس-سيدل)
-7. Curve Fitting & Regression (الانحدار ومواءمة المنحنيات)
-8. تشغيل الواجهة الرسومية الحديثة (Launch GUI)
-0. خروج
-==================================================
+### 2. Launch the Interactive Terminal Interface (CLI)
+```bash
+./.venv/bin/python main.py
 ```
 
 ---
 
-## Convergence & Theoretical Comparison
+## Status & Role of `main.py`
 
-| Algorithm | Domain | Key Requirements | Convergence Order | Guarantee |
-| :--- | :--- | :--- | :--- | :--- |
-| **Bisection** | Root Finding | Continuous $f(x)$, $f(a) \cdot f(b) < 0$ | Linear ($\mathcal{O}(2^{-n})$) | Guaranteed if bracketed |
-| **Newton-Raphson** | Root Finding | Differentiable $f(x)$, $f'(x) \neq 0$ | Quadratic ($\mathcal{O}(h^2)$) | Fast near simple root |
-| **Secant** | Root Finding | Continuous $f(x)$, 2 initial points | Superlinear ($\approx 1.618$) | Derivative-free |
-| **Modified Secant**| Root Finding | Continuous $f(x)$, 1 point $x_0$, perturbation $\delta$ | Superlinear ($\approx 1.618$) | 1 point, derivative-free |
-| **Jacobi** | Linear Systems| Strictly diagonally dominant $A$ | Linear | Simultaneous updates |
-| **Gauss-Seidel** | Linear Systems| Strictly diagonally dominant or SPD $A$ | Linear ($\approx 2\times$ Jacobi) | Successive updates |
-| **Regression** | Curve Fitting | $n \ge m + 1$ data points | Direct algebraic solution | Optimal least-squares fit |
+An architectural audit of `main.py` confirms the following:
+- **Status**: Active, fully tracked in Git (`main`), and synchronized with the latest methods.
+- **Role**: `main.py` is the official **CLI entry point**. It is **not** legacy or obsolete.
+- **Purpose**:
+  - Serves terminal users who work in SSH, server, or headless environments without an active display server.
+  - Option 8 in `main.py` (`Launch GUI`) allows seamless launching of `app.py` from within the CLI.
+  - Each mathematical method provides both a pure algorithmic function (imported by `app.py`) and a user-friendly CLI driver (run by `main.py`).
 
 ---
 
-## Contributing
+## Troubleshooting & Common Pitfalls
 
-Contributions, bug reports, and pull requests are welcome! If you encounter issues or have suggestions for additional methods (e.g., Runge-Kutta, LU Decomposition, Lagrange Interpolation), feel free to open an issue or submit a PR.
+### 1. Missing Tkinter on Arch Linux
+- **Symptom**: `ImportError: libtk8.6.so: cannot open shared object file: No such file or directory` or `ModuleNotFoundError: No module named '_tkinter'`.
+- **Cause**: Minimal or arch-based Linux installs do not include Tk by default.
+- **Solution**: Install system Tk:
+  ```bash
+  sudo pacman -S tk
+  ```
+  *Note*: `app.py` also includes an automated fallback check in `.venv/lib` for bundled shared objects.
+
+### 2. IDE Interpreter Path Resolution
+- **Symptom**: Running from inside Antigravity or VS Code yields `ModuleNotFoundError: No module named 'customtkinter'`.
+- **Cause**: The IDE selected the global system `/bin/python` instead of the project `.venv`.
+- **Solution**: Configure the workspace to use `.venv`:
+  - Verify `.vscode/settings.json`:
+    ```json
+    {
+      "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
+    }
+    ```
+  - Open the command palette (`Ctrl+Shift+P`), choose **Python: Select Interpreter**, and select `./.venv/bin/python`.
+
+### 3. Wayland / Hyprland Display Scaling
+- **Symptom**: Window appears too large, blurry, or tiny on 2K/4K monitors under Hyprland / Wayland.
+- **Solution**: CustomTkinter widget scaling can be customized via the `CTK_SCALING` environment variable:
+  ```bash
+  CTK_SCALING=1.0 ./.venv/bin/python app.py
+  # or for 125% scaling:
+  CTK_SCALING=1.25 ./.venv/bin/python app.py
+  ```
 
 ---
 

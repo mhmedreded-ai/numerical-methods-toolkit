@@ -1,3 +1,21 @@
+"""
+Math 3 Numerical Methods Suite - CLI Runner & Orchestrator.
+
+This module provides the interactive Command Line Interface (CLI) for running
+all implemented numerical methods without launching the desktop GUI. It also
+provides a dedicated launcher option to spin up the CustomTkinter visual app.
+
+Available Numerical Methods:
+    1. Bisection Method (Root-Finding)
+    2. Newton-Raphson Method (Root-Finding)
+    3. Secant Method (Root-Finding)
+    4. Modified Secant Method (Root-Finding)
+    5. Jacobi Iterative Method (Linear Systems)
+    6. Gauss-Seidel Iterative Method (Linear Systems)
+    7. Curve Fitting & Regression (Linear, Polynomial, Exponential, Power)
+    8. Launch Desktop GUI (CustomTkinter)
+"""
+
 import os
 import subprocess
 import sys
@@ -25,7 +43,8 @@ from jacobi import solve_jacobi
 from gauss_seidel import solve_gauss_seidel
 from regression import solve_regression
 
-def launch_gui():
+def launch_gui() -> None:
+    """Launch the CustomTkinter modern desktop GUI in a separate subprocess."""
     print("\nجارٍ فتح الواجهة الرسومية (GUI)...")
     try:
         app_path = os.path.join(BASE_DIR, "app.py")
@@ -33,7 +52,8 @@ def launch_gui():
     except Exception as e:
         print(f"تعذر فتح الواجهة الرسومية: {e}")
 
-def menu():
+def menu() -> None:
+    """Display the primary interactive CLI menu loop and route user selections."""
     while True:
         print("\n" + "=" * 50)
         print("     حاسبة طرق Math 3 (التحليل العددي الشامل)")
