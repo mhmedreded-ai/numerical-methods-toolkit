@@ -48,8 +48,7 @@ jobs:
             libssl-dev \
             build-essential \
             ccache \
-            patch \
-            which
+            patch
           echo "ACLOCAL_PATH=/usr/share/aclocal" >> $GITHUB_ENV
 
       - name: Install Buildozer and Cython
