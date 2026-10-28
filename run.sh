@@ -22,5 +22,10 @@ else
     exit 1
 fi
 
-echo "Starting Math 3 Desktop GUI using $PY_BIN..."
-exec "$PY_BIN" app.py "$@"
+if [ "$1" = "--mobile" ]; then
+    echo "Starting Math 3 Mobile App (Kivy) using $PY_BIN..."
+    exec "$PY_BIN" mobile_app.py "${@:2}"
+else
+    echo "Starting Math 3 Desktop GUI using $PY_BIN..."
+    exec "$PY_BIN" app.py "$@"
+fi

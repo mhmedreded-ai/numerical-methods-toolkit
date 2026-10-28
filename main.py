@@ -43,9 +43,18 @@ from jacobi import solve_jacobi
 from gauss_seidel import solve_gauss_seidel
 from regression import solve_regression
 
+def launch_mobile_gui() -> None:
+    """Launch the Kivy mobile graphical interface."""
+    print("\nجارٍ فتح واجهة تطبيق الموبايل (Kivy Mobile UI)...")
+    try:
+        from mobile_app import run_mobile_app
+        run_mobile_app()
+    except Exception as e:
+        print(f"تعذر فتح تطبيق الموبايل: {e}")
+
 def launch_gui() -> None:
     """Launch the CustomTkinter modern desktop GUI in a separate subprocess."""
-    print("\nجارٍ فتح الواجهة الرسومية (GUI)...")
+    print("\nجارٍ فتح الواجهة الرسومية (Desktop GUI)...")
     try:
         app_path = os.path.join(BASE_DIR, "app.py")
         subprocess.Popen([sys.executable, app_path], cwd=BASE_DIR)
@@ -65,7 +74,8 @@ def menu() -> None:
         print("5. Jacobi Method (طريقة جاكوبي للأنظمة الخطية)")
         print("6. Gauss-Seidel Method (طريقة جاوس-سيدل)")
         print("7. Curve Fitting & Regression (الانحدار ومواءمة المنحنيات)")
-        print("8. تشغيل الواجهة الرسومية الحديثة (Launch GUI)")
+        print("8. تشغيل واجهة الموبايل (Kivy Mobile App)")
+        print("9. تشغيل واجهة سطح المكتب (CustomTkinter Desktop GUI)")
         print("0. خروج")
         print("=" * 50)
 
@@ -87,16 +97,22 @@ def menu() -> None:
             elif choice == '7':
                 solve_regression()
             elif choice == '8':
+                launch_mobile_gui()
+            elif choice == '9':
                 launch_gui()
             elif choice == '0':
                 print("\nشكراً لاستخدامك حاسبة التحليل العددي. بالتوفيق!")
                 break
             else:
-                print("اختيار غير صحيح، يرجى إدخال رقم من 0 إلى 8.")
+                print("اختيار غير صحيح، يرجى إدخال رقم من 0 إلى 9.")
         except KeyboardInterrupt:
             print("\nتم إلغاء العملية بواسطة المستخدم.")
         except Exception as e:
             print(f"\nحدث خطأ غير متوقع: {e}")
 
 if __name__ == "__main__":
-    menu()
+    # If running inside an Android APK environment (p4a/buildozer) or with --mobile flag
+    if "ANDROID_ARGUMENT" in os.environ or "PYTHON_SERVICE_ARGUMENT" in os.environ or "P4A_BOOTSTRAP" in os.environ or "--mobile" in sys.argv:
+        launch_mobile_gui()
+    else:
+        menu()

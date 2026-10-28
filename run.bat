@@ -20,8 +20,13 @@ if exist ".venv\Scripts\python.exe" (
     set "PY_BIN=python"
 )
 
-echo Starting Math 3 Desktop GUI...
-"%PY_BIN%" app.py %*
+if "%1"=="--mobile" (
+    echo Starting Math 3 Mobile App (Kivy)...
+    "%PY_BIN%" mobile_app.py %*
+) else (
+    echo Starting Math 3 Desktop GUI...
+    "%PY_BIN%" app.py %*
+)
 if %errorlevel% neq 0 (
     echo.
     echo If missing dependencies, run: pip install -r requirements.txt

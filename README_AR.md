@@ -2,12 +2,13 @@
 
 [![Python Version](https://img.shields.io/badge/بايثون-3.10%2B-blue.svg)](https://www.python.org/)
 [![المنصة](https://img.shields.io/badge/المنصة-آرش%20لينكس%20%7C%20لينكس%20%7C%20ويندوز%20%7C%20ماك-lightgrey.svg)](https://github.com/mhmedreded-ai/numerical-methods-toolkit)
-[![الواجهة الرسومية](https://img.shields.io/badge/الواجهة-CustomTkinter%206.0-darkblue.svg)](https://github.com/TomSchimansky/CustomTkinter)
+[![الأندرويد](https://img.shields.io/badge/أندرويد-APK%20جاهز%20للتثبيت-brightgreen.svg)](https://github.com/mhmedreded-ai/numerical-methods-toolkit/actions)
+[![الواجهة الرسومية](https://img.shields.io/badge/الواجهة-CustomTkinter%20%7C%20Kivy%20Mobile-darkblue.svg)](https://github.com/TomSchimansky/CustomTkinter)
 [![المحرك الرياضي](https://img.shields.io/badge/المحرك%20الرمزي-SymPy%201.14-orange.svg)](https://www.sympy.org/)
 [![الرسم البياني](https://img.shields.io/badge/الرسوم-Matplotlib%203.11-success.svg)](https://matplotlib.org/)
 [![الرخصة](https://img.shields.io/badge/الرخصة-MIT-green.svg)](LICENSE)
 
-برنامج تطبيقي متكامل عالي الدقة ومفتوح المصدر لحساب ومحاكاة طرق **التحليل العددي (Numerical Analysis)** المقررة في الرياضيات الهندسية (Math 3). يجمع المشروع بين خوارزميات حسابية دقيقة، وقائمة طرفية تفاعلية (CLI)، وواجهة رسومية سطح مكتبية عصرية وداكنة (Dark Theme GUI) مبنية بتقنية **CustomTkinter**، تدعم اللغة العربية بالكامل ومزودة بمخططات بيانية تفاعلية مدمجة عبر **Matplotlib**.
+برنامج تطبيقي متكامل عالي الدقة ومفتوح المصدر لحساب ومحاكاة طرق **التحليل العددي (Numerical Analysis)** المقررة في الرياضيات الهندسية (Math 3). يجمع المشروع بين خوارزميات حسابية دقيقة، وقائمة طرفية تفاعلية (CLI)، وواجهة رسومية سطح مكتبية عصرية وداكنة (Desktop GUI) مبنية بتقنية **CustomTkinter**، وتطبيق مخصص للأندرويد والهواتف الذكية (Mobile APK) مبني بتقنية **Kivy** مع دعم كامل للغة العربية ومخططات بيانية تفاعلية.
 
 ---
 
@@ -248,9 +249,48 @@ pip install -r requirements.txt
 ## وضع ودور ملف `main.py` في المشروع
 
 أكد الفحص الهندسي للكود أن ملف [`main.py`](file:///home/myarch/Projects/math%203/main.py):
-- **ملف فعال ومحدث بالكامل**: ليس ملفاً قديماً مهملاً (Legacy)، بل يمثل **نقطة الدخول الرسمية للطرفية (CLI Entry Point)**.
-- **الفائدة منه**: يتيح تشغيل جميع الخوارزميات الحسابية بنمط نصي خفيف وسريع يفيد في الخوادم البعيدة أو جلسات SSH التي لا تدعم تشغيل خادم شاشات رسومي.
-- **الربط بالواجهة**: يحتوي الخيار رقم `8` في القائمة على أمر `launch_gui()` الذي يستدعي بدوره تشغيل `app.py`.
+- **ملف فعال ومحدث بالكامل**: ليس ملفاً قديماً مهملاً (Legacy)، بل يمثل **نقطة الدخول الرسمية للطرفية (CLI Entry Point)** وبوابة تشغيل تلقائية لتطبيق الأندرويد.
+- **التوافق التلقائي مع الأندرويد**: عند تشغيل التطبيق داخل بيئة أندرويد عبر Buildozer، يتعرف `main.py` تلقائياً على نظام التشغيل ويقوم بإطلاق واجهة الموبايل (`mobile_app.py`).
+- **خيارات التشغيل**: يحتوي الخيار رقم `8` على تشغيل واجهة الموبايل (Kivy)، والخيار `9` على تشغيل واجهة سطح المكتب (CustomTkinter).
+
+---
+
+## تشغيل التطبيق على هواتف الأندرويد وبناء ملف الـ APK (Android Support)
+
+نظراً لأن مكتبة **Tkinter / CustomTkinter** مخصصة لبيئات سطح المكتب فقط وتعتمد على خوادم نوافذ سطحية (X11 / Wayland / Win32)، تم تطوير واجهة موبايل كاملة موازية مبنية بإطار العمل العالمي **Kivy** داخل الملف [`mobile_app.py`](file:///home/myarch/Projects/math%203/mobile_app.py)، مدعومة بملف تكوين أندرويد [`buildozer.spec`](file:///home/myarch/Projects/math%203/buildozer.spec) ومحاذاة كاملة للخطوط العربية عبر الخط المدمج [`assets/fonts/NotoSansArabic-Regular.ttf`](file:///home/myarch/Projects/math%203/assets/fonts/NotoSansArabic-Regular.ttf).
+
+### 1. تحميل ملف الـ APK الجاهز مباشرة من GitHub (الطريقة الأسهل)
+تم إعداد خط بناء وتجميع آلي عبر **GitHub Actions** داخل المستودع:
+1. توجه إلى تبويب **Actions** في صفحة المشروع على GitHub: [GitHub Actions Builds](https://github.com/mhmedreded-ai/numerical-methods-toolkit/actions).
+2. اختر سير العمل: **Build Android APK with Buildozer**.
+3. يمكنك تشغيله يدوياً بالضغط على **Run workflow**، أو سيتم بناؤه تلقائياً عند دفع أي تحديث أو إصدار جديد (Release Tag).
+4. عند اكتمال البناء، ستجد ملف الـ APK متاحاً للتحميل المباشر تحت بند **Artifacts** باسم:
+   `Math3-Numerical-Methods-APK.zip`
+5. فك الضغط وثبّت ملف الـ `.apk` على هاتفك الأندرويد مباشرة!
+
+### 2. تجربة ومعاينة واجهة الموبايل على جهاز الكمبيوتر
+يمكنك اختبار واجهة الهاتف وتجربة استجابتها للمس والأبعاد العمودية من حاسوبك مباشرة:
+```bash
+# على نظام لينكس أو ماك:
+./run.sh --mobile
+
+# أو مباشرة عبر مفسر بايثون:
+./.venv/bin/python mobile_app.py
+
+# على نظام ويندوز:
+run.bat --mobile
+```
+
+### 3. بناء وتجميع ملف الـ APK محلياً (باستخدام Buildozer)
+إذا كنت ترغب في تجميع الـ APK على جهازك محلياً:
+```bash
+# تثبيت buildozer و cython
+./.venv/bin/pip install buildozer cython
+
+# بدء بناء ملف الـ APK (Debug Mode)
+buildozer android debug
+```
+سيتم حفظ ملف الـ APK الناتج داخل المجلد `bin/`.
 
 ---
 

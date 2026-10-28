@@ -10,3 +10,8 @@ pillow>=9.5.0
 # Cross-Platform Arabic Reshaping & BiDi Rendering
 arabic-reshaper>=3.0.0
 python-bidi>=0.4.2
+
+# Mobile UI & Android APK Support (Kivy)
+kivy>=2.2.0
+buildozer>=1.5.0
+

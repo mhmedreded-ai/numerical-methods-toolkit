@@ -241,11 +241,41 @@ This repository completely resolves this issue by incorporating:
 
 An architectural audit of `main.py` confirms the following:
 - **Status**: Active, fully tracked in Git (`main`), and synchronized with the latest methods.
-- **Role**: `main.py` is the official **CLI entry point**. It is **not** legacy or obsolete.
+- **Role**: `main.py` is the official **CLI entry point** and the automated Android bootstrap entry point.
 - **Purpose**:
   - Serves terminal users who work in SSH, server, or headless environments without an active display server.
-  - Option 8 in `main.py` (`Launch GUI`) allows seamless launching of `app.py` from within the CLI.
-  - Each mathematical method provides both a pure algorithmic function (imported by `app.py`) and a user-friendly CLI driver (run by `main.py`).
+  - Automatically launches the Kivy mobile application when running on Android.
+  - Option 8 launches the Mobile UI (`mobile_app.py`), and Option 9 launches the Desktop GUI (`app.py`).
+
+---
+
+## Android Application & APK Compilation
+
+While CustomTkinter is designed for desktop windowing systems, Math 3 provides a dedicated mobile-first application ([`mobile_app.py`](file:///home/myarch/Projects/math%203/mobile_app.py)) powered by **Kivy**, complete with touch-optimized layouts, full Arabic BiDi support, and Android APK packaging via **Buildozer**.
+
+### 1. Download Pre-built APK from GitHub Actions
+1. Navigate to the **Actions** tab in the repository: [GitHub Actions Workflows](https://github.com/mhmedreded-ai/numerical-methods-toolkit/actions).
+2. Select **Build Android APK with Buildozer**.
+3. Trigger manually using **Run workflow** or wait for the automatic build on tag/commit.
+4. Download the generated `.apk` under **Artifacts** (`Math3-Numerical-Methods-APK.zip`).
+5. Install directly on your Android phone or tablet.
+
+### 2. Preview Mobile App on Desktop
+You can preview and test the mobile touch interface directly on your computer:
+```bash
+# Linux / macOS
+./run.sh --mobile
+
+# Windows
+run.bat --mobile
+```
+
+### 3. Local APK Build with Buildozer
+To compile the APK locally using the configured [`buildozer.spec`](file:///home/myarch/Projects/math%203/buildozer.spec):
+```bash
+buildozer android debug
+```
+The output APK is generated in `bin/`.
 
 ---
 
