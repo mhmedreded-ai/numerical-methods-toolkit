@@ -122,7 +122,7 @@ class NumericalApp(ctk.CTk):
         self.root_method_var = ctk.StringVar(value="Bisection")
         self.root_selector = ctk.CTkSegmentedButton(
             self.tab_roots, 
-            values=["Bisection", "Newton-Raphson", "Secant"],
+            values=["Bisection", "Newton-Raphson", "Secant", "Modified Secant"],
             variable=self.root_method_var,
             command=self.update_root_inputs,
             font=(self.font_family, 13, "bold"),
