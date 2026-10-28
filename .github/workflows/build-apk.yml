@@ -10,8 +10,8 @@ on:
 
 jobs:
   build:
-    name: Build Android APK (Native Ubuntu Runner)
-    runs-on: ubuntu-latest
+    name: Build Android APK (Ubuntu 22.04 LTS)
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout Code
@@ -37,14 +37,20 @@ jobs:
             zip \
             unzip \
             autoconf \
+            automake \
             libtool \
+            libtool-bin \
+            libltdl-dev \
             pkg-config \
             zlib1g-dev \
             cmake \
             libffi-dev \
             libssl-dev \
             build-essential \
-            ccache
+            ccache \
+            patch \
+            which
+          echo "ACLOCAL_PATH=/usr/share/aclocal" >> $GITHUB_ENV
 
       - name: Install Buildozer and Cython
         run: |
