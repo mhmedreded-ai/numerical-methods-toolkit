@@ -13,6 +13,7 @@ from secant import solve_secant
 from modified_secant import solve_modified_secant
 from jacobi import solve_jacobi
 from gauss_seidel import solve_gauss_seidel
+from regression import solve_regression
 
 def launch_gui():
     print("\nجارٍ فتح الواجهة الرسومية (GUI)...")
@@ -33,7 +34,8 @@ def menu():
         print("4. Modified Secant Method (طريقة القاطع المعدلة)")
         print("5. Jacobi Method (طريقة جاكوبي للأنظمة الخطية)")
         print("6. Gauss-Seidel Method (طريقة جاوس-سيدل)")
-        print("7. تشغيل الواجهة الرسومية الحديثة (Launch GUI)")
+        print("7. Curve Fitting & Regression (الانحدار ومواءمة المنحنيات)")
+        print("8. تشغيل الواجهة الرسومية الحديثة (Launch GUI)")
         print("0. خروج")
         print("=" * 50)
 
@@ -53,12 +55,14 @@ def menu():
             elif choice == '6':
                 solve_gauss_seidel()
             elif choice == '7':
+                solve_regression()
+            elif choice == '8':
                 launch_gui()
             elif choice == '0':
                 print("\nشكراً لاستخدامك حاسبة التحليل العددي. بالتوفيق!")
                 break
             else:
-                print("اختيار غير صحيح، يرجى إدخال رقم من 0 إلى 7.")
+                print("اختيار غير صحيح، يرجى إدخال رقم من 0 إلى 8.")
         except KeyboardInterrupt:
             print("\nتم إلغاء العملية بواسطة المستخدم.")
         except Exception as e:

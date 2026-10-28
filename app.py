@@ -28,6 +28,18 @@ from math_utils import parse_math_expression, make_diagonally_dominant
 import arabic_reshaper
 from bidi.algorithm import get_display
 
+import matplotlib
+matplotlib.use("TkAgg")
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+from regression import (
+    linear_regression,
+    polynomial_regression,
+    exponential_regression,
+    power_regression,
+    fit_curve
+)
 
 def ar(text):
     if not text:
@@ -51,8 +63,8 @@ class NumericalApp(ctk.CTk):
         super().__init__()
 
         self.title("Math 3 - Numerical Analysis Suite (التحليل العددي)")
-        self.geometry("980x780")
-        self.minsize(850, 650)
+        self.geometry("1020x820")
+        self.minsize(900, 700)
 
         # تحديد الخطوط المتوافقة تلقائياً (Segoe UI لويندوز، Noto Sans/DejaVu للينكس/Hyprland)
         self.font_family = "Segoe UI"
@@ -88,8 +100,11 @@ class NumericalApp(ctk.CTk):
 
         self.tab_roots = self.tabview.add(ar("جذور المعادلات (Root Finding)"))
         self.tab_linear = self.tabview.add(ar("الأنظمة الخطية (Linear Systems)"))
+        self.tab_regression = self.tabview.add(ar("الانحدار ومواءمة المنحنيات (Regression)"))
+
         self.setup_roots_tab()
         self.setup_linear_tab()
+        self.setup_regression_tab()
 
     def setup_treeview_styles(self):
         style = ttk.Style()
@@ -641,6 +656,324 @@ class NumericalApp(ctk.CTk):
 
         except Exception as e:
             self.res_linear.configure(text=ar(f"خطأ في الإدخال: {e}"), text_color="#e74c3c")
+
+    # -------------------------------------------------------------
+    # 3. تبويب الانحدار ومواءمة المنحنيات (Regression & Curve Fitting)
+    # -------------------------------------------------------------
+    def setup_regression_tab(self):
+        # 1. محدد الطريقة (Linear, Polynomial, Exponential, Power)
+        self.reg_method_var = ctk.StringVar(value="Linear")
+        self.reg_selector = ctk.CTkSegmentedButton(
+            self.tab_regression,
+            values=["Linear", "Polynomial", "Exponential", "Power"],
+            variable=self.reg_method_var,
+            command=self.update_regression_inputs,
+            font=(self.font_family, 13, "bold"),
+            height=32
+        )
+        self.reg_selector.pack(pady=(6, 4))
+
+        # 2. إطار المدخلات
+        reg_input_frame = ctk.CTkFrame(self.tab_regression)
+        reg_input_frame.pack(fill="x", padx=12, pady=4)
+
+        # صف قيم X
+        lbl_x = ctk.CTkLabel(reg_input_frame, text=ar("قيم X (مفصولة بمسافات أو فواصل):"), font=(self.font_family, 12, "bold"))
+        lbl_x.grid(row=0, column=2, padx=10, pady=4, sticky="e")
+        self.entry_reg_x = ctk.CTkEntry(reg_input_frame, placeholder_text=ar("مثال: 1, 2, 3, 4, 5, 6, 7"), width=380)
+        self.entry_reg_x.insert(0, "1, 2, 3, 4, 5, 6, 7")
+        self.entry_reg_x.grid(row=0, column=1, padx=10, pady=4, sticky="w")
+
+        # صف قيم Y
+        lbl_y = ctk.CTkLabel(reg_input_frame, text=ar("قيم Y (مفصولة بمسافات أو فواصل):"), font=(self.font_family, 12, "bold"))
+        lbl_y.grid(row=1, column=2, padx=10, pady=4, sticky="e")
+        self.entry_reg_y = ctk.CTkEntry(reg_input_frame, placeholder_text=ar("مثال: 0.5, 2.5, 2.0, 4.0, 3.5, 6.0, 5.5"), width=380)
+        self.entry_reg_y.insert(0, "0.5, 2.5, 2.0, 4.0, 3.5, 6.0, 5.5")
+        self.entry_reg_y.grid(row=1, column=1, padx=10, pady=4, sticky="w")
+
+        # إطار الخيارات الإضافية (درجة كثير الحدود، بيانات تجريبية، مسح)
+        opts_frame = ctk.CTkFrame(reg_input_frame, fg_color="transparent")
+        opts_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=(2, 6), sticky="ew")
+
+        # درجة كثير الحدود (يظهر عند اختيار Polynomial)
+        self.deg_container = ctk.CTkFrame(opts_frame, fg_color="transparent")
+        self.deg_container.pack(side="right", padx=10)
+        
+        self.lbl_reg_deg = ctk.CTkLabel(self.deg_container, text=ar("درجة كثير الحدود (Degree m):"), font=(self.font_family, 12))
+        self.lbl_reg_deg.pack(side="right", padx=(5, 0))
+        self.entry_reg_deg = ctk.CTkEntry(self.deg_container, width=65)
+        self.entry_reg_deg.insert(0, "2")
+        self.entry_reg_deg.pack(side="right", padx=(0, 5))
+        self.deg_container.pack_forget()
+
+        # أزرار مساعدة
+        self.btn_sample_reg = ctk.CTkButton(
+            opts_frame,
+            text=ar("بيانات تجريبية (Sample)"),
+            font=(self.font_family, 11),
+            width=130,
+            height=28,
+            fg_color="#2b5278",
+            hover_color="#1e3b57",
+            command=self.load_sample_regression_data
+        )
+        self.btn_sample_reg.pack(side="left", padx=6)
+
+        self.btn_clear_reg = ctk.CTkButton(
+            opts_frame,
+            text=ar("مسح الحقول (Clear)"),
+            font=(self.font_family, 11),
+            width=110,
+            height=28,
+            fg_color="#5c6370",
+            hover_color="#4b5263",
+            command=self.clear_regression_inputs
+        )
+        self.btn_clear_reg.pack(side="left", padx=6)
+
+        # زر الحساب الرئيسي
+        self.btn_calc_reg = ctk.CTkButton(
+            self.tab_regression,
+            text=ar("احسب وطابق المنحنى الآن (Fit Curve)"),
+            font=(self.font_family, 13, "bold"),
+            fg_color="#1f538d",
+            hover_color="#14375e",
+            height=34,
+            command=self.calculate_regression
+        )
+        self.btn_calc_reg.pack(pady=4)
+
+        # إطار عرض المعادلة والمقاييس الإحصائية
+        self.metrics_container = ctk.CTkFrame(self.tab_regression, fg_color="#1e2227")
+        self.metrics_container.pack(fill="x", padx=12, pady=2)
+
+        self.lbl_reg_eq = ctk.CTkLabel(
+            self.metrics_container, 
+            text=ar("معادلة المنحنى: اضغط على زر الحساب لعرض المعادلة والمخطط"), 
+            font=(self.font_family, 13, "bold"),
+            text_color="#61afef"
+        )
+        self.lbl_reg_eq.pack(pady=(4, 2))
+
+        self.lbl_reg_metrics = ctk.CTkLabel(
+            self.metrics_container, 
+            text=ar("مقاييس الجودة: R² = -- | Sy/x = -- | SSE (Sr) = --"), 
+            font=(self.font_family, 11),
+            text_color="#abb2bf"
+        )
+        self.lbl_reg_metrics.pack(pady=(0, 4))
+
+        self.lbl_reg_error = ctk.CTkLabel(
+            self.tab_regression,
+            text="",
+            font=(self.font_family, 12, "bold"),
+            text_color="#e74c3c"
+        )
+        self.lbl_reg_error.pack(pady=(0, 2))
+
+        # إطار العرض المنقسم (Split Content: جدول على اليسار ومخطط بياني على اليمين)
+        split_frame = ctk.CTkFrame(self.tab_regression)
+        split_frame.pack(fill="both", expand=True, padx=10, pady=(2, 6))
+        split_frame.columnconfigure(0, weight=4)
+        split_frame.columnconfigure(1, weight=5)
+        split_frame.rowconfigure(0, weight=1)
+
+        # 1. إطار جدول البواقي والتقييم
+        table_frame = ctk.CTkFrame(split_frame)
+        table_frame.grid(row=0, column=0, sticky="nsew", padx=(4, 4), pady=4)
+
+        lbl_tbl_title = ctk.CTkLabel(
+            table_frame, 
+            text=ar("جدول مقارنة القيم والبواقي (Evaluation Table)"), 
+            font=(self.font_family, 11, "bold")
+        )
+        lbl_tbl_title.pack(pady=3)
+
+        tree_scroll_y = ttk.Scrollbar(table_frame, orient="vertical")
+        self.tree_reg = ttk.Treeview(
+            table_frame,
+            columns=("pt", "x", "y_act", "y_pred", "res"),
+            show="headings",
+            yscrollcommand=tree_scroll_y.set
+        )
+        tree_scroll_y.config(command=self.tree_reg.yview)
+        tree_scroll_y.pack(side="right", fill="y")
+        self.tree_reg.pack(side="left", fill="both", expand=True)
+
+        cols = [
+            ("pt", ar("ن"), 35),
+            ("x", "X", 65),
+            ("y_act", ar("Y الفعلي"), 75),
+            ("y_pred", ar("Y النموذج"), 75),
+            ("res", ar("الباقي (e)"), 75)
+        ]
+        for col_id, title, width in cols:
+            self.tree_reg.heading(col_id, text=title)
+            self.tree_reg.column(col_id, width=width, anchor="center")
+
+        # 2. إطار الرسم البياني Matplotlib Canvas
+        plot_frame = ctk.CTkFrame(split_frame)
+        plot_frame.grid(row=0, column=1, sticky="nsew", padx=(4, 4), pady=4)
+
+        self.fig_reg = Figure(figsize=(4.6, 3.2), dpi=95)
+        self.fig_reg.patch.set_facecolor('#23272e')
+        self.ax_reg = self.fig_reg.add_subplot(111)
+        self.apply_dark_plot_style(self.ax_reg)
+
+        self.canvas_reg = FigureCanvasTkAgg(self.fig_reg, master=plot_frame)
+        self.canvas_reg.get_tk_widget().pack(fill="both", expand=True, padx=2, pady=2)
+        self.canvas_reg.draw()
+
+    def apply_dark_plot_style(self, ax):
+        ax.set_facecolor('#1e2227')
+        ax.tick_params(colors='#abb2bf', labelsize=8)
+        for spine in ax.spines.values():
+            spine.set_color('#5c6370')
+        ax.grid(True, color='#5c6370', linestyle='--', alpha=0.35)
+        ax.set_xlabel("X", color='#abb2bf', fontsize=9)
+        ax.set_ylabel("Y", color='#abb2bf', fontsize=9)
+
+    def update_regression_inputs(self, choice=None):
+        if choice is None:
+            choice = self.reg_method_var.get()
+        if choice == "Polynomial":
+            self.deg_container.pack(side="right", padx=10)
+        else:
+            self.deg_container.pack_forget()
+
+    def load_sample_regression_data(self):
+        method = self.reg_method_var.get()
+        self.entry_reg_x.delete(0, "end")
+        self.entry_reg_y.delete(0, "end")
+
+        if method == "Linear":
+            self.entry_reg_x.insert(0, "1, 2, 3, 4, 5, 6, 7")
+            self.entry_reg_y.insert(0, "0.5, 2.5, 2.0, 4.0, 3.5, 6.0, 5.5")
+        elif method == "Polynomial":
+            self.entry_reg_x.insert(0, "0, 1, 2, 3, 4, 5")
+            self.entry_reg_y.insert(0, "2.1, 7.7, 13.6, 27.2, 40.9, 61.1")
+            self.entry_reg_deg.delete(0, "end")
+            self.entry_reg_deg.insert(0, "2")
+        elif method == "Exponential":
+            self.entry_reg_x.insert(0, "1, 2, 3, 4, 5")
+            self.entry_reg_y.insert(0, "0.5, 1.7, 5.0, 14.8, 44.0")
+        elif method == "Power":
+            self.entry_reg_x.insert(0, "1, 2, 3, 4, 5")
+            self.entry_reg_y.insert(0, "0.5, 2.0, 4.5, 8.0, 12.5")
+
+    def clear_regression_inputs(self):
+        self.entry_reg_x.delete(0, "end")
+        self.entry_reg_y.delete(0, "end")
+        self.lbl_reg_eq.configure(text=ar("معادلة المنحنى: في انتظار الحساب..."))
+        self.lbl_reg_metrics.configure(text=ar("مقاييس الجودة: R² = -- | Sy/x = -- | SSE (Sr) = --"))
+        self.lbl_reg_error.configure(text="")
+        for item in self.tree_reg.get_children():
+            self.tree_reg.delete(item)
+        self.ax_reg.clear()
+        self.apply_dark_plot_style(self.ax_reg)
+        self.canvas_reg.draw()
+
+    def calculate_regression(self):
+        self.lbl_reg_error.configure(text="")
+        method = self.reg_method_var.get()
+
+        raw_x = self.entry_reg_x.get().strip()
+        raw_y = self.entry_reg_y.get().strip()
+
+        if not raw_x or not raw_y:
+            self.lbl_reg_error.configure(text=ar("خطأ: يرجى إدخال قيم X وقيم Y!"))
+            return
+
+        try:
+            x_vals = [float(v) for v in raw_x.replace(",", " ").split()]
+            y_vals = [float(v) for v in raw_y.replace(",", " ").split()]
+        except ValueError:
+            self.lbl_reg_error.configure(text=ar("خطأ: يرجى التأكد من أن جميع مدخلات X و Y أرقام صحيحة أو عشرية!"))
+            return
+
+        n = len(x_vals)
+        if n != len(y_vals):
+            self.lbl_reg_error.configure(text=ar(f"خطأ: عدد قيم X ({n}) لا يتطابق مع عدد قيم Y ({len(y_vals)})!"))
+            return
+
+        if n < 2:
+            self.lbl_reg_error.configure(text=ar("خطأ: يجب إدخال نقطتين على الأقل (N >= 2) لإجراء مواءمة المنحنيات!"))
+            return
+
+        degree = 2
+        if method == "Polynomial":
+            deg_str = self.entry_reg_deg.get().strip()
+            try:
+                degree = int(deg_str)
+                if degree < 1:
+                    self.lbl_reg_error.configure(text=ar("خطأ: درجة كثير الحدود يجب أن تكون 1 على الأقل!"))
+                    return
+                if n < degree + 1:
+                    self.lbl_reg_error.configure(text=ar(f"خطأ: عدد النقاط ({n}) غير كافٍ لدرجة كثير الحدود ({degree}). يلزم على الأقل {degree + 1} نقاط!"))
+                    return
+            except ValueError:
+                self.lbl_reg_error.configure(text=ar("خطأ: يرجى إدخال رقم صحيح لدرجة كثير الحدود!"))
+                return
+
+        # تنفيذ الحساب
+        try:
+            if method == "Linear":
+                res = linear_regression(x_vals, y_vals)
+            elif method == "Polynomial":
+                res = polynomial_regression(x_vals, y_vals, degree=degree)
+            elif method == "Exponential":
+                res = exponential_regression(x_vals, y_vals)
+            elif method == "Power":
+                res = power_regression(x_vals, y_vals)
+            else:
+                self.lbl_reg_error.configure(text=ar(f"طريقة غير معروفة: {method}"))
+                return
+
+            # تحديث المعادلة والمقاييس
+            self.lbl_reg_eq.configure(text=ar(f"معادلة المنحنى:  {res['equation']}"))
+            metrics_str = f"R² = {res['r2']:.5f} ({res['r2']*100:.2f}%)   |   Sy/x = {res['syx']:.5f}   |   SSE (Sr) = {res['sr']:.5f}   |   St = {res['st']:.5f}"
+            self.lbl_reg_metrics.configure(text=ar(metrics_str))
+
+            # تحديث جدول التقييم
+            for item in self.tree_reg.get_children():
+                self.tree_reg.delete(item)
+
+            for i, (xi, yi, yp, e) in enumerate(zip(x_vals, y_vals, res['y_pred'], res['residuals']), 1):
+                self.tree_reg.insert("", "end", values=(i, f"{xi:.4g}", f"{yi:.4g}", f"{yp:.4g}", f"{e:+.4g}"))
+
+            # تحديث المخطط البياني في Matplotlib Canvas
+            self.ax_reg.clear()
+            self.apply_dark_plot_style(self.ax_reg)
+
+            # رسم نقاط البيانات
+            self.ax_reg.scatter(
+                x_vals, y_vals,
+                color='#e06c75',
+                s=50,
+                zorder=5,
+                label=ar("نقاط البيانات (Data)"),
+                edgecolors='#ffffff',
+                linewidths=0.8
+            )
+
+            # رسم المنحنى المتصل الموفق
+            self.ax_reg.plot(
+                res['x_curve'], res['y_curve'],
+                color='#61afef',
+                linewidth=2.2,
+                zorder=4,
+                label=ar(f"منحنى المواءمة ({method})")
+            )
+
+            title_text = f"Curve Fit: {res['method_name']} (R² = {res['r2']:.4f})"
+            self.ax_reg.set_title(title_text, color='#dcdfe4', fontsize=10, fontweight='bold', pad=8)
+            self.ax_reg.legend(facecolor='#282c34', edgecolor='#5c6370', labelcolor='#dcdfe4', fontsize=8, loc='best')
+
+            self.fig_reg.tight_layout()
+            self.canvas_reg.draw()
+
+        except Exception as err:
+            self.lbl_reg_error.configure(text=ar(f"خطأ أثناء الحساب: {err}"))
 
 if __name__ == "__main__":
     app = NumericalApp()
