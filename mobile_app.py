@@ -14,6 +14,7 @@ Features:
 """
 
 import os
+import re
 import sys
 from typing import List, Dict, Any, Optional
 
@@ -41,7 +42,7 @@ except ImportError:
     HAS_ARABIC_RESHAPER = False
 
 # Import pure mathematical numerical algorithms
-from math_utils import parse_math_expression, check_strictly_diagonally_dominant, make_diagonally_dominant
+from math_utils import parse_math_expression, check_diagonally_dominant, make_diagonally_dominant
 from bisection import bisection
 from newton_raphson import newton_raphson
 from secant import secant
@@ -69,18 +70,31 @@ if os.path.exists(FONT_PATH):
     except Exception as e:
         print(f"Warning: Could not register Arabic font: {e}")
 
+ARABIC_CHAR_RE = re.compile(r"[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]")
+LTR_TRAILING_SYMBOLS_RE = re.compile(
+    r"([A-Za-z0-9][A-Za-z0-9\s\u00b2\+\-\*\/\^\=\|\(\)\.\,\%]*[\-\=\+\*\/\|]+)"
+)
+
+
 def ar(text: Any) -> str:
-    """Reshape and reorder Arabic text for bidirectional rendering."""
+    """Reshape and reorder Arabic text for bidirectional rendering in Kivy."""
     if not text:
         return ""
-    if not HAS_ARABIC_RESHAPER:
-        return str(text)
+    s = str(text)
+    if not HAS_ARABIC_RESHAPER or not ARABIC_CHAR_RE.search(s):
+        return s
     try:
-        s = str(text)
-        reshaped = arabic_reshaper.reshape(s)
-        return get_display(reshaped)
+        out_lines = []
+        for line in s.split("\n"):
+            if not ARABIC_CHAR_RE.search(line):
+                out_lines.append(line)
+                continue
+            line_fixed = LTR_TRAILING_SYMBOLS_RE.sub("\\1\u200e", line)
+            reshaped = arabic_reshaper.reshape(line_fixed)
+            out_lines.append(get_display(reshaped, base_dir="R"))
+        return "\n".join(out_lines)
     except Exception:
-        return str(text)
+        return s
 
 # ---------------------------------------------------------
 # Custom Styled Kivy Widgets
@@ -110,7 +124,7 @@ class ArabicLabel(Label):
     def set_arabic_text(self, text):
         self.text = ar(text)
 
-class ActionButton(Button):
+class RoundedButton(Button):
     """Material-styled touch button with smooth rounded background."""
     def __init__(self, text="", bg_color=(0.02, 0.71, 0.83, 1), **kwargs):
         kwargs.setdefault("font_name", ARABIC_FONT)
@@ -173,13 +187,13 @@ class MobileToolkitRoot(BoxLayout):
 
         # 2. Main Navigation Tabs (Roots, Linear Systems, Regression)
         self.nav_tabs = BoxLayout(size_hint_y=None, height=44, spacing=4, padding=[6, 4, 6, 4])
-        self.tab_roots = ActionButton(text="إيجاد الجذور", bg_color=(0.02, 0.71, 0.83, 1), height=36)
+        self.tab_roots = RoundedButton(text="إيجاد الجذور", bg_color=(0.02, 0.71, 0.83, 1), height=36)
         self.tab_roots.bind(on_release=lambda btn: self.switch_section("roots"))
 
-        self.tab_linear = ActionButton(text="الأنظمة الخطية", bg_color=(0.18, 0.24, 0.35, 1), height=36)
+        self.tab_linear = RoundedButton(text="الأنظمة الخطية", bg_color=(0.18, 0.24, 0.35, 1), height=36)
         self.tab_linear.bind(on_release=lambda btn: self.switch_section("linear"))
 
-        self.tab_reg = ActionButton(text="الانحدار", bg_color=(0.18, 0.24, 0.35, 1), height=36)
+        self.tab_reg = RoundedButton(text="الانحدار", bg_color=(0.18, 0.24, 0.35, 1), height=36)
         self.tab_reg.bind(on_release=lambda btn: self.switch_section("regression"))
 
         self.nav_tabs.add_widget(self.tab_roots)
@@ -205,9 +219,9 @@ class MobileToolkitRoot(BoxLayout):
         active_color = (0.02, 0.71, 0.83, 1)  # Cyan
         inactive_color = (0.18, 0.24, 0.35, 1)
 
-        self.tab_roots.color_instruction.rgb = active_color if self.current_section == "roots" else inactive_color
-        self.tab_linear.color_instruction.rgb = active_color if self.current_section == "linear" else inactive_color
-        self.tab_reg.color_instruction.rgb = active_color if self.current_section == "regression" else inactive_color
+        self.tab_roots.color_instruction.rgba = active_color if self.current_section == "roots" else inactive_color
+        self.tab_linear.color_instruction.rgba = active_color if self.current_section == "linear" else inactive_color
+        self.tab_reg.color_instruction.rgba = active_color if self.current_section == "regression" else inactive_color
 
     def switch_section(self, section: str):
         self.current_section = section
@@ -215,10 +229,13 @@ class MobileToolkitRoot(BoxLayout):
         self.content_box.clear_widgets()
 
         if section == "roots":
+            self.current_submethod = "Bisection"
             self.build_roots_section()
         elif section == "linear":
+            self.current_submethod = "Jacobi"
             self.build_linear_section()
         elif section == "regression":
+            self.current_submethod = "Linear"
             self.build_regression_section()
 
     # =========================================================================
@@ -256,7 +273,7 @@ class MobileToolkitRoot(BoxLayout):
         self.rebuild_root_inputs("Bisection")
 
         # Action Button
-        self.btn_solve_root = ActionButton(text="احسب الجذر (Calculate Root)", bg_color=(0.06, 0.72, 0.51, 1), height=48)
+        self.btn_solve_root = RoundedButton(text="احسب الجذر (Calculate Root)", bg_color=(0.06, 0.72, 0.51, 1), height=48)
         self.btn_solve_root.bind(on_release=self.calculate_root)
         self.content_box.add_widget(self.btn_solve_root)
 
@@ -453,7 +470,7 @@ class MobileToolkitRoot(BoxLayout):
         self.content_box.add_widget(self.lin_inputs_card)
 
         # Solve button
-        self.btn_solve_linear = ActionButton(text="حل النظام الخطي (Solve System)", bg_color=(0.06, 0.72, 0.51, 1), height=48)
+        self.btn_solve_linear = RoundedButton(text="حل النظام الخطي (Solve System)", bg_color=(0.06, 0.72, 0.51, 1), height=48)
         self.btn_solve_linear.bind(on_release=self.calculate_linear)
         self.content_box.add_widget(self.btn_solve_linear)
 
@@ -565,7 +582,7 @@ class MobileToolkitRoot(BoxLayout):
         self.content_box.add_widget(self.reg_inputs_card)
 
         # Fit button
-        self.btn_fit_curve = ActionButton(text="مواءمة المنحنى (Fit Curve)", bg_color=(0.06, 0.72, 0.51, 1), height=48)
+        self.btn_fit_curve = RoundedButton(text="مواءمة المنحنى (Fit Curve)", bg_color=(0.06, 0.72, 0.51, 1), height=48)
         self.btn_fit_curve.bind(on_release=self.calculate_regression)
         self.content_box.add_widget(self.btn_fit_curve)
 
@@ -603,16 +620,20 @@ class MobileToolkitRoot(BoxLayout):
 
             method = self.current_submethod
             if method == "Linear":
-                a0, a1, r2, s_yx, eq = linear_regression(x_raw, y_raw)
+                res = linear_regression(x_raw, y_raw)
             elif method == "Polynomial":
                 deg = int(self.txt_reg_degree.text.strip() or 2)
-                coeffs, r2, s_yx, eq = polynomial_regression(x_raw, y_raw, deg)
+                res = polynomial_regression(x_raw, y_raw, deg)
             elif method == "Exponential":
-                a, b, r2, s_yx, eq = exponential_regression(x_raw, y_raw)
+                res = exponential_regression(x_raw, y_raw)
             elif method == "Power":
-                a, b, r2, s_yx, eq = power_regression(x_raw, y_raw)
+                res = power_regression(x_raw, y_raw)
             else:
                 return
+
+            eq = res["equation"]
+            r2 = res["r2"]
+            s_yx = res["syx"]
 
             res_str = (
                 f"معادلة النموذج:\n{eq}\n"

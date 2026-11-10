@@ -67,12 +67,22 @@ import customtkinter as ctk
 import sympy as sp
 import tkinter as tk
 from tkinter import ttk
+import re
 from math_utils import parse_math_expression, make_diagonally_dominant
 import arabic_reshaper
 from bidi.algorithm import get_display
 
 import matplotlib
 matplotlib.use("TkAgg")
+matplotlib.rcParams["font.sans-serif"] = [
+    "Segoe UI",
+    "Tahoma",
+    "Arial",
+    "Noto Sans Arabic",
+    "Geeza Pro",
+    "DejaVu Sans",
+]
+matplotlib.rcParams["axes.unicode_minus"] = False
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
@@ -84,25 +94,50 @@ from regression import (
     fit_curve
 )
 
+ARABIC_CHAR_RE = re.compile(r"[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]")
+LTR_TRAILING_SYMBOLS_RE = re.compile(
+    r"([A-Za-z0-9][A-Za-z0-9\s\u00b2\+\-\*\/\^\=\|\(\)\.\,\%]*[\-\=\+\*\/\|]+)"
+)
+
+
 def ar(text: str) -> str:
     """Reshape and reorder Arabic text for correct bidirectional rendering in Tkinter.
 
     Uses arabic-reshaper to connect glyphs according to Arabic orthography and
-    python-bidi to order characters from right to left, preventing disjointed or
-    reversed text on Linux/Wayland and across Tkinter platforms.
+    python-bidi (with RTL base direction) to order characters from right to left.
+    On Windows and macOS, wraps reshaped lines in Unicode Left-to-Right Override
+    (U+202D ... U+202C) so the native OS text renderer does not reverse the
+    already-reordered Arabic Presentation Forms a second time.
 
     Args:
         text (str): Input string containing Arabic, English, or mixed characters.
 
     Returns:
-        str: Reshaped, correctly ordered string ready for Tkinter widgets.
+        str: Reshaped, correctly ordered string ready for Tkinter and Matplotlib widgets.
     """
     if not text:
         return ""
+    s = str(text)
+    if not ARABIC_CHAR_RE.search(s):
+        return s
     try:
-        return get_display(arabic_reshaper.reshape(str(text)))
+        use_lro = sys.platform in ("win32", "darwin")
+        out_lines = []
+        for line in s.split("\n"):
+            if not ARABIC_CHAR_RE.search(line):
+                out_lines.append(line)
+                continue
+            # Keep trailing math/metric symbols (=, --, etc.) attached to LTR segments
+            line_fixed = LTR_TRAILING_SYMBOLS_RE.sub("\\1\u200e", line)
+            reshaped = arabic_reshaper.reshape(line_fixed)
+            bidi_text = get_display(reshaped, base_dir="R")
+            if use_lro:
+                out_lines.append(f"\u202d{bidi_text}\u202c")
+            else:
+                out_lines.append(bidi_text)
+        return "\n".join(out_lines)
     except Exception:
-        return str(text)
+        return s
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -458,7 +493,7 @@ class NumericalApp(ctk.CTk):
                 def safe_df(val):
                     res = float(df_num(float(val)))
                     if math.isnan(res) or math.isinf(res):
-                        raise ValueError(ar("المشتقة غير معرفة"))
+                        raise ValueError("المشتقة غير معرفة")
                     return res
 
                 x0 = float(self.entry_p1.get())
